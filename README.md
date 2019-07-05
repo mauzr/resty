@@ -1,3 +1,5 @@
+<a href="https://goreportcard.com/report/github.com/eqrx/mauzr-go"><img src="https://goreportcard.com/badge/github.com/eqrx/mauzr-go" alt="Go Report Card"/></a>
+
 # mauzr (go)
 
 Mauzr is a toolkit that aims to create a smart environment the manual way.
