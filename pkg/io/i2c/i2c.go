@@ -14,15 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package spi
+package i2c
 
-// Device connect to a device behind and SPI bus
+import "mauzr.eqrx.net/go/pkg/io"
+
+// Device represents a device behind an I2C bus.
 type Device interface {
-	Exchange(mosi []byte, miso []byte) error
-	Close() error
+	Open() io.Action
+	Close() io.Action
+	Write(source []byte) io.Action
+	WriteRead(source []byte, destination []byte) io.Action
 }
 
-// AttachDevice connects to a device behind and SPI bus
-func AttachDevice(path string) (Device, error) {
-	return attachDirectDevice(path)
-}
+// NewDevice creates a new Device. this function can be overridden to mock the device.
+var NewDevice = newNormalDevice

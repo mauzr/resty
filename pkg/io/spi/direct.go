@@ -21,7 +21,8 @@ import (
 	"os"
 	"unsafe"
 
-	"golang.org/x/sys/unix"
+	"mauzr.eqrx.net/go/pkg/io"
+	"mauzr.eqrx.net/go/pkg/io/file"
 )
 
 const (
@@ -41,23 +42,23 @@ type spiIoctlArg struct {
 	pad         uint16 //nolint
 }
 
-func openLinuxBus(path string) (*os.File, error) {
-	file, err := os.OpenFile(path, os.O_RDWR, 0660)
-	if err != nil {
-		err = fmt.Errorf("Could not open SPI bus %v: %v", path, err)
-	}
-	return file, err
+type normalDevice struct {
+	file  file.File
+	speed uint32
 }
 
-func closeLinuxDevice(bus *os.File) error {
-	err := bus.Close()
-	if err != nil {
-		err = fmt.Errorf("Could not close SPI bus: %v", err)
-	}
-	return err
+// Open connection to the device.
+func (d *normalDevice) Open() io.Action {
+	return d.file.Open(os.O_RDWR|os.O_SYNC, 0660)
 }
 
-func exchangeLinux(bus *os.File, speed uint32, mosi []byte, miso []byte) error {
+// Close the connection to the device.
+func (d *normalDevice) Close() io.Action {
+	return d.file.Close()
+}
+
+// Exchange sends data to an SPI device while receiving the same amount of data.
+func (d *normalDevice) Exchange(mosi []byte, miso []byte) io.Action {
 	if len(mosi) != len(miso) {
 		panic(fmt.Sprintf("SPI MOSI and MISO arrays have different lengths (%v %v)/n", len(mosi), len(miso)))
 	}
@@ -65,10 +66,11 @@ func exchangeLinux(bus *os.File, speed uint32, mosi []byte, miso []byte) error {
 		txBuf:   uint64(uintptr(unsafe.Pointer(&miso[0]))),
 		rxBuf:   uint64(uintptr(unsafe.Pointer(&mosi[0]))),
 		len:     uint32(len(mosi)),
-		speedHz: speed,
+		speedHz: d.speed,
 	}
-	if _, _, errno := unix.Syscall(unix.SYS_IOCTL, bus.Fd(), ioctlSpiOperation, uintptr(unsafe.Pointer(&arg))); errno != 0 {
-		return fmt.Errorf("SPI exchange failed with errno %v", errno)
-	}
-	return nil
+	return d.file.Ioctl(ioctlSpiOperation, uintptr(unsafe.Pointer(&arg)))
+}
+
+func newNormalDevice(path string) Device {
+	return &normalDevice{file: file.NewFile(path)}
 }
