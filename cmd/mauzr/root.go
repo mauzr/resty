@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -49,6 +50,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	command := cobra.Command{
 		Use:   "mauzr <subcommand>",
 		Short: "Expose devices to the network",
@@ -58,6 +61,7 @@ func main() {
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() != "help" {
+				defer cancel()
 				return rest.Serve(*listen, *caPath, *crtPath, *keyPath, mux)
 			}
 			return nil
@@ -75,6 +79,7 @@ func main() {
 	command.PersistentFlags().AddFlagSet(&flags)
 
 	command.AddCommand(documentCmd(&command), completeCmd(&command))
+	command.AddCommand(bme280Command(ctx, mux), bme680Command(ctx, mux))
 	if err := command.Execute(); err != nil {
 		panic(err)
 	}
