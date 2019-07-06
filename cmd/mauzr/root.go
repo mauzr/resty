@@ -79,7 +79,7 @@ func main() {
 	command.PersistentFlags().AddFlagSet(&flags)
 
 	command.AddCommand(documentCmd(&command), completeCmd(&command))
-	command.AddCommand(bme280Command(ctx, mux), bme680Command(ctx, mux))
+	command.AddCommand(bme280Command(ctx, mux), bme680Command(ctx, mux), gpioCommand(mux))
 	if err := command.Execute(); err != nil {
 		panic(err)
 	}
