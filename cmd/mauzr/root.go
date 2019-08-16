@@ -29,7 +29,7 @@ import (
 
 func applyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string) error {
 	for _, envToFlag := range envsToFlags {
-		env, flag := envToFlag[0], envToFlag[1]
+		flag, env := envToFlag[0], envToFlag[1]
 		if value, set := os.LookupEnv(env); set {
 			if err := flags.Set(flag, value); err != nil {
 				return fmt.Errorf("Could not apply environment variable %v with value %v to flag %v: %v", env, value, flag, err)
@@ -43,44 +43,40 @@ func main() {
 	flags := pflag.FlagSet{}
 
 	flags.StringToStringP("tags", "t", nil, "Tags to include in measurements")
-	listen := flags.StringP("listen", "l", ":443", "Listen address of the REST server")
-	caPath := flags.StringP("ca", "", "/etc/ssl/certs/mauzr-ca.crt", "Path to CA file to validate clients")
-	crtPath := flags.StringP("crt", "", "/etc/ssl/certs/mauzr.crt", "Path to cert file to identify to the clients")
-	keyPath := flags.StringP("key", "", "/etc/ssl/private/mauzr.key", "Path to key file to identify to the clients")
-
+	hostname := flags.StringP("hostname", "n", "", "Name of this service that is used to bind and pick TLS certificates")
 	mux := http.NewServeMux()
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	command := cobra.Command{
-		Use:   "mauzr <subcommand>",
-		Short: "Expose devices to the network",
+	rootCommand := cobra.Command{
+		Use:          "mauzr <subcommand>",
+		Short:        "Expose devices to the network",
+		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return applyEnvsToFlags(&flags, [][2]string{{"tags", "RIWERS_TAGS"}, {"listen", "RIWERS_LISTEN"},
-				{"ca", "RIWERS_CA"}, {"crt", "RIWERS_CRT"}, {"key", "RIWERS_KEY"}})
+			return applyEnvsToFlags(&flags, [][2]string{{"tags", "MAUZR_TAGS"}, {"hostname", "MAUZR_HOSTNAME"}})
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() != "help" {
-				defer cancel()
-				return rest.Serve(*listen, *caPath, *crtPath, *keyPath, mux)
+				return rest.Serve(fmt.Sprintf("%s:443", *hostname), "/etc/ssl/certs/mauzr-ca.crt",
+					fmt.Sprintf("/etc/ssl/certs/%s.crt", *hostname), fmt.Sprintf("/etc/ssl/private/%s.key", *hostname), mux)
 			}
 			return nil
 		},
 	}
-	if err := cobra.MarkFlagFilename(&flags, "ca"); err != nil {
-		panic(err)
-	}
-	if err := cobra.MarkFlagFilename(&flags, "crt"); err != nil {
-		panic(err)
-	}
-	if err := cobra.MarkFlagFilename(&flags, "key"); err != nil {
-		panic(err)
-	}
-	command.PersistentFlags().AddFlagSet(&flags)
+	rootCommand.PersistentFlags().AddFlagSet(&flags)
 
-	command.AddCommand(documentCmd(&command), completeCmd(&command))
-	command.AddCommand(bme280Command(ctx, mux), bme680Command(ctx, mux), gpioCommand(mux))
-	if err := command.Execute(); err != nil {
+	rootCommand.AddCommand(documentCmd(&rootCommand), completeCmd(&rootCommand))
+
+	subCommands := map[string]*cobra.Command{
+		"bme280": bme280Command(ctx, mux),
+		"bme680": bme680Command(ctx, mux),
+		"gpio":   gpioCommand(mux),
+	}
+	for _, subCommand := range subCommands {
+		rootCommand.AddCommand(subCommand)
+	}
+	if err := rootCommand.Execute(); err != nil {
 		panic(err)
 	}
 }

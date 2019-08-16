@@ -62,7 +62,7 @@ func Serve(listen string, caPath string, crtPath string, keyPath string, mux *ht
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		Handler:           mux,
-		// Disable HTTP v2.0 since that woul require 128 bit ciphers.
+		// Disable HTTP v2.0 since that would require 128 bit ciphers.
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 	}
 	return server.ListenAndServeTLS("", "")

@@ -21,23 +21,17 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"time"
+
+	"mauzr.eqrx.net/go/pkg/rest/args"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-type measurementReply struct {
-	Measurement
-	tags map[string]string
-}
-
 type measurementHandler struct {
 	log               *log.Logger
-	bus               string
-	device            uint16
-	calibrations      chan Calibrations
+	chip              Chip
 	tags              map[string]string
 	httpErrorCount    prometheus.Counter
 	measureCount      prometheus.Counter
@@ -57,6 +51,12 @@ func (h measurementHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var maxAge time.Duration
+	if err := args.Collect(r.URL, []args.Argument{args.Duration(&maxAge, "maxAge", false)}); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	var err error
 	defer func() {
 		if err != nil {
@@ -66,65 +66,31 @@ func (h measurementHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	measureCtx, measureCtxCancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer measureCtxCancel()
+
 	h.measureCount.Inc()
-	calibrations := <-h.calibrations
 	var measurement Measurement
-	if measurement, err = Measure(h.bus, h.device, calibrations); err == nil {
+	if measurement, err = h.chip.Measure(measureCtx, maxAge); err == nil {
 		encoder := json.NewEncoder(w)
-		if err = encoder.Encode(measurementReply{Measurement: measurement, tags: h.tags}); err != nil {
+		reply := make(map[string]interface{})
+		reply["temperature"] = measurement.Temperature
+		reply["pressure"] = measurement.Pressure
+		reply["humidity"] = measurement.Humidity
+		reply["gas_resistance"] = measurement.GasResistance
+		reply["timestamp"] = measurement.Time.Unix()
+		for k, v := range h.tags {
+			reply[k] = v
+		}
+		if err = encoder.Encode(reply); err == nil {
 			return
-		}
-	} else {
-		h.measureErrorCount.Inc()
-	}
-
-	h.httpErrorCount.Inc()
-	h.log.Println(err)
-	http.Error(w, err.Error(), http.StatusInternalServerError)
-}
-
-func manageChip(ctx context.Context, logger *log.Logger, bus string, device uint16, calibrationsChannel chan Calibrations) {
-	resetTimer, retryTimer := time.NewTimer(0), time.NewTimer(0)
-	var calibrations Calibrations
-	var err error
-	for {
-		for {
-			calibrations, err = Reset(bus, device)
-			if err == nil {
-				break
-			}
-			logger.Println(err)
-			retryTimer.Reset(10 * time.Second)
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-retryTimer.C:
-			}
-		}
-
-		resetTimer.Reset(time.Hour)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case calibrationsChannel <- calibrations:
-				continue
-			case <-resetTimer.C:
-			}
-			resetTimer.Reset(time.Hour)
-			break
 		}
 	}
 }
 
 // RESTHandler creates a http.Handler that handles BME680 measurements.
-func RESTHandler(ctx context.Context, bus string, device uint16, tags map[string]string) http.Handler {
-	calibrations := make(chan Calibrations)
-	logger := log.New(os.Stderr, "", 0)
-	go manageChip(ctx, logger, bus, device, calibrations)
-
-	return measurementHandler{log.New(os.Stderr, "", 0), bus, device, calibrations, tags,
+func RESTHandler(ctx context.Context, logger *log.Logger, chip Chip, tags map[string]string) http.Handler {
+	return measurementHandler{logger, chip, tags,
 		promauto.NewCounter(prometheus.CounterOpts{Name: "http_errors_total", Help: "Number of HTTP errors occurred"}),
 		promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_total", Help: "Number of measurements executed"}),
 		promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_errors", Help: "Number of measurements failed"}),

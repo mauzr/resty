@@ -1,12 +1,13 @@
 [Unit]
-After=network.target
+After=network-online.target
 Description=Mauzr agent
 
 [Service]
-EnvironmentFile=/etc/mauzr/common
+EnvironmentFile=-/etc/mauzr/common
 EnvironmentFile=/etc/mauzr/%i
-ExecStart=/usr/bin/mauzr %i
+ExecStart=/usr/bin/mauzr $MAUZR_DEVICE
 Restart=on-failure
+RestartSec=15
 
 [Install]
 WantedBy=multi-user.target

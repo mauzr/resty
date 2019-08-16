@@ -31,7 +31,7 @@ type Measurement struct {
 	Humidity    float64
 	Pressure    float64
 	Temperature float64
-	Timestamp   int64
+	Time   time.Time
 }
 
 // calibrationInput contains variables that will be read out of the BME280 registers.
@@ -106,7 +106,7 @@ func Measure(bus string, address uint16, calibrations Calibrations) (Measurement
 	tReading := (uint32(reading[3])<<16 | uint32(reading[4])<<8 | uint32(reading[5])) >> 4
 	hReading := uint32(reading[6])<<8 | uint32(reading[7])
 
-	m := Measurement{Timestamp: time.Now().Unix()}
+	m := Measurement{Time: time.Now()}
 	m.Humidity, m.Pressure, m.Temperature = calibrations.Compensate(hReading, pReading, tReading)
 
 	return m, nil
