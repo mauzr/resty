@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package bme280
 
 import "time"
@@ -20,6 +21,7 @@ import "context"
 import "log"
 import "fmt"
 
+// Manager manages all functions of a chip
 type Manager struct {
 	bus                     string
 	device                  uint16

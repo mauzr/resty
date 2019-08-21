@@ -38,6 +38,6 @@ type Pin interface {
 	Write(source bool) func() error
 }
 
-// NewPin creates a new Pin. this function can be overriden to
+// NewPin creates a new Pin. this function can be overridden to
 // mock the device
 var NewPin = newNormalPin

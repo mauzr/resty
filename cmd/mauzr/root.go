@@ -72,7 +72,7 @@ func main() {
 		"bme280": bme280Command(ctx, mux),
 		"bme680": bme680Command(ctx, mux),
 		"gpio":   gpioCommand(mux),
-                "sk6812": sk6812Command(mux),
+		"sk6812": sk6812Command(mux),
 	}
 	for _, subCommand := range subCommands {
 		rootCommand.AddCommand(subCommand)

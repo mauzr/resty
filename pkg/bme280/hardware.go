@@ -31,7 +31,7 @@ type Measurement struct {
 	Humidity    float64
 	Pressure    float64
 	Temperature float64
-	Time   time.Time
+	Time        time.Time
 }
 
 // calibrationInput contains variables that will be read out of the BME280 registers.

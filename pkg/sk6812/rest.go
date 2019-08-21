@@ -71,7 +71,7 @@ func RESTHandler(tty string) http.Handler {
 	return setHandler{
 		log:            log.New(os.Stderr, "", 0),
 		tty:            tty,
-		httpErrorCount: promauto.NewCounter(prometheus.CounterOpts{Name: "http_errors_total", Help: "Number of HTTP errors occured"}),
+		httpErrorCount: promauto.NewCounter(prometheus.CounterOpts{Name: "http_errors_total", Help: "Number of HTTP errors occurred"}),
 		setCount:       promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_total", Help: "Number of measurements executed"}),
 		setErrorCount:  promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_errors", Help: "Number of measurements failed"}),
 		setTime:        promauto.NewHistogram(prometheus.HistogramOpts{Name: "measurements_execution_time", Help: "Duration of the measurement", Buckets: prometheus.LinearBuckets(0.01, 0.01, 10)}),

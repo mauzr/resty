@@ -26,6 +26,7 @@ var (
 	translation [256][translationSizeFactor]uint8
 )
 
+// StripSetting represents an array of SK6812 channel settings
 type StripSetting [][channelCount]uint8
 
 func init() {
