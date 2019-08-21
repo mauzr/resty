@@ -17,6 +17,7 @@ limitations under the License.
 package file
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 
@@ -31,6 +32,7 @@ type File interface {
 	Close() io.Action
 	Write([]byte, *int) io.Action
 	WriteString(string, *int) io.Action
+	WriteBinary(order binary.ByteOrder, data interface{}) io.Action
 	Seek(int64, int, *int64) io.Action
 	Read([]byte, *int) io.Action
 	ReadString(*string, int) io.Action
@@ -111,6 +113,17 @@ func (f *normalFile) Write(data []byte, count *int) io.Action {
 		}
 		if count != nil {
 			*count = c
+		}
+		return nil
+	}
+}
+
+// Write bytes to the file.
+func (f *normalFile) WriteBinary(order binary.ByteOrder, data interface{}) io.Action {
+	return func() error {
+		err := binary.Write(f.handle, order, data)
+		if err != nil {
+			return fmt.Errorf("Could not binary write %v to file %v: %v", data, f.path, err)
 		}
 		return nil
 	}
