@@ -5,7 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
-	"mauzr.eqrx.net/go/pkg/gpio"
+	"go.eqrx.net/mauzr/pkg/gpio"
 )
 
 func gpioCommand(mux *http.ServeMux) *cobra.Command {

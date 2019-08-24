@@ -23,7 +23,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"mauzr.eqrx.net/go/pkg/io"
+	"go.eqrx.net/mauzr/pkg/io"
 )
 
 // File represents a file.

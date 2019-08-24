@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"time"
 
-	"mauzr.eqrx.net/go/pkg/io"
-	"mauzr.eqrx.net/go/pkg/io/i2c"
+	"go.eqrx.net/mauzr/pkg/io"
+	"go.eqrx.net/mauzr/pkg/io/i2c"
 )
 
 // Measurement contains the compensated measurements of a BME280 and its timestamp.

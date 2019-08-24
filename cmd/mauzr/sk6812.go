@@ -22,7 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"mauzr.eqrx.net/go/pkg/sk6812"
+	"go.eqrx.net/mauzr/pkg/sk6812"
 )
 
 func sk6812Command(mux *http.ServeMux) *cobra.Command {

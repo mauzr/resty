@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"unsafe"
 
+	"go.eqrx.net/mauzr/pkg/io"
 	"golang.org/x/sys/unix"
-	"mauzr.eqrx.net/go/pkg/io"
 )
 
 // MemoryMap represents a file that is mapped to a memory range.

@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"mauzr.eqrx.net/go/pkg/rest"
+	"go.eqrx.net/mauzr/pkg/rest"
 )
 
 func applyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string) error {

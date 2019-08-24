@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"time"
 
-	"mauzr.eqrx.net/go/pkg/io"
-	"mauzr.eqrx.net/go/pkg/io/file"
+	"go.eqrx.net/mauzr/pkg/io"
+	"go.eqrx.net/mauzr/pkg/io/file"
 )
 
 func fetchGpioBase(base *uint32) io.Action {

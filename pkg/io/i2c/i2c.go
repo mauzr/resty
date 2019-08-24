@@ -16,7 +16,7 @@ limitations under the License.
 
 package i2c
 
-import "mauzr.eqrx.net/go/pkg/io"
+import "go.eqrx.net/mauzr/pkg/io"
 
 // Device represents a device behind an I2C bus.
 type Device interface {

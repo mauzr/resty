@@ -90,7 +90,6 @@ func (m *Manager) reset(ctx context.Context, logger *log.Logger) {
 
 func (m *Manager) run(ctx context.Context, logger *log.Logger) {
 	var measurement Measurement
-	//resetTimer := time.NewTimer(1 * time.Hour)
 	for {
 		select {
 		case maxAge := <-m.requestedMeasurementAge:
@@ -106,8 +105,6 @@ func (m *Manager) run(ctx context.Context, logger *log.Logger) {
 			continue
 		case <-ctx.Done():
 			return
-			//case <-resetTimer.C:
-			//	return
 		}
 	}
 }

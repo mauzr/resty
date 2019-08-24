@@ -21,9 +21,9 @@ import (
 	"math"
 	"testing"
 
-	"mauzr.eqrx.net/go/pkg/bme680"
-	"mauzr.eqrx.net/go/pkg/io"
-	"mauzr.eqrx.net/go/pkg/io/i2c"
+	"go.eqrx.net/mauzr/pkg/bme680"
+	"go.eqrx.net/mauzr/pkg/io"
+	"go.eqrx.net/mauzr/pkg/io/i2c"
 )
 
 //MeasurementMock fakes an BME680 device behind an I2C bus.

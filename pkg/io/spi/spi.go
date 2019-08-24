@@ -16,7 +16,7 @@ limitations under the License.
 
 package spi
 
-import "mauzr.eqrx.net/go/pkg/io"
+import "go.eqrx.net/mauzr/pkg/io"
 
 // Device represents a device behind an SPI bus.
 type Device interface {

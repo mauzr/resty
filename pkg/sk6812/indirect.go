@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"os"
 
-	"mauzr.eqrx.net/go/pkg/io"
-	"mauzr.eqrx.net/go/pkg/io/file"
+	"go.eqrx.net/mauzr/pkg/io"
+	"go.eqrx.net/mauzr/pkg/io/file"
 )
 
 func apply(tty string, setting []uint8) error {

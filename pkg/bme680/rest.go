@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"time"
 
-	"mauzr.eqrx.net/go/pkg/rest/args"
+	"go.eqrx.net/mauzr/pkg/rest/args"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"

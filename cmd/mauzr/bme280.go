@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"mauzr.eqrx.net/go/pkg/bme280"
+	"go.eqrx.net/mauzr/pkg/bme280"
 )
 
 func bme280Command(ctx context.Context, mux *http.ServeMux) *cobra.Command {

@@ -1,4 +1,4 @@
-module mauzr.eqrx.net/go
+module go.eqrx.net/mauzr
 
 go 1.12
 

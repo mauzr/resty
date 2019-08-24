@@ -22,8 +22,8 @@ import (
 	"os"
 	"strconv"
 
-	"mauzr.eqrx.net/go/pkg/io"
-	"mauzr.eqrx.net/go/pkg/rest/args"
+	"go.eqrx.net/mauzr/pkg/io"
+	"go.eqrx.net/mauzr/pkg/rest/args"
 )
 
 type inputHandler struct {

@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"os"
 
-	"mauzr.eqrx.net/go/pkg/io"
-	"mauzr.eqrx.net/go/pkg/io/file"
+	"go.eqrx.net/mauzr/pkg/io"
+	"go.eqrx.net/mauzr/pkg/io/file"
 )
 
 type normalPin struct {

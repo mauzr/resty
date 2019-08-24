@@ -19,7 +19,7 @@ package sk6812_test
 import (
 	"testing"
 
-	"mauzr.eqrx.net/go/pkg/sk6812"
+	"go.eqrx.net/mauzr/pkg/sk6812"
 )
 
 // TestTranslate tests if a list of channel values is correctly serialized
