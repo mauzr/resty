@@ -32,7 +32,7 @@ func fetchGpioBase(base *uint32) io.Action {
 	return func() error {
 		f := file.NewFile("/proc/device-tree/soc/ranges")
 		buffer := make([]byte, 4)
-		if err := io.Execute([]io.Action{f.Open(os.O_RDONLY, 0600), f.Seek(4, 0, nil), f.Read(buffer, nil)}, []io.Action{f.Close()}); err != nil {
+		if err := io.Execute([]io.Action{f.Open(os.O_RDONLY, 0600), f.Seek(4, 0, nil), f.Read(buffer)}, []io.Action{f.Close()}); err != nil {
 			return fmt.Errorf("Could not read GPIO memory range: %v", err)
 		}
 		if err := binary.Read(bytes.NewReader(buffer), binary.BigEndian, base); err != nil {

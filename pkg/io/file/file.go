@@ -30,15 +30,16 @@ import (
 type File interface {
 	Open(int, os.FileMode) io.Action
 	Close() io.Action
-	Write([]byte, *int) io.Action
-	WriteString(string, *int) io.Action
+	Write([]byte) io.Action
+	WriteString(string) io.Action
 	WriteBinary(order binary.ByteOrder, data interface{}) io.Action
 	Seek(int64, int, *int64) io.Action
-	Read([]byte, *int) io.Action
+	Read([]byte) io.Action
 	ReadString(*string, int) io.Action
 	Ioctl(uintptr, uintptr) io.Action
 	Unmap(*[]byte) io.Action
 	Map(int64, int, int, int, *[]byte) io.Action
+	Fd() uintptr
 }
 
 type normalFile struct {
@@ -105,14 +106,11 @@ func (f *normalFile) Close() io.Action {
 }
 
 // Write bytes to the file.
-func (f *normalFile) Write(data []byte, count *int) io.Action {
+func (f *normalFile) Write(data []byte) io.Action {
 	return func() error {
-		c, err := f.handle.Write(data)
+		_, err := f.handle.Write(data)
 		if err != nil {
 			return fmt.Errorf("Could not write %v to file %v: %v", data, f.path, err)
-		}
-		if count != nil {
-			*count = c
 		}
 		return nil
 	}
@@ -130,14 +128,11 @@ func (f *normalFile) WriteBinary(order binary.ByteOrder, data interface{}) io.Ac
 }
 
 // WriteString to the file.
-func (f *normalFile) WriteString(data string, count *int) io.Action {
+func (f *normalFile) WriteString(data string) io.Action {
 	return func() error {
-		c, err := f.handle.WriteString(data)
+		_, err := f.handle.WriteString(data)
 		if err != nil {
 			return fmt.Errorf("Could not write %v to file %v: %v", data, f.path, err)
-		}
-		if count != nil {
-			*count = c
 		}
 		return nil
 	}
@@ -158,14 +153,11 @@ func (f *normalFile) Seek(offset int64, whence int, new *int64) io.Action {
 }
 
 // Read from the file.
-func (f *normalFile) Read(destination []byte, count *int) io.Action {
+func (f *normalFile) Read(destination []byte) io.Action {
 	return func() error {
-		c, err := f.handle.Read(destination)
+		_, err := f.handle.Read(destination)
 		if err != nil {
 			return fmt.Errorf("Could not read #%v from file %v: %v", len(destination), f.path, err)
-		}
-		if count != nil {
-			*count = c
 		}
 		return nil
 	}
@@ -175,7 +167,7 @@ func (f *normalFile) Read(destination []byte, count *int) io.Action {
 func (f *normalFile) ReadString(destination *string, length int) io.Action {
 	buf := make([]byte, length)
 	return func() error {
-		err := f.Read(buf, nil)()
+		err := f.Read(buf)()
 		if err != nil {
 			return fmt.Errorf("Could not read #%v from file %v: %v", length, f.path, err)
 		}

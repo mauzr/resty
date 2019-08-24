@@ -26,23 +26,22 @@ import (
 	"time"
 )
 
-// Serve creates a REST server secured by TLS with client cert authentication.
-func Serve(listen string, caPath string, crtPath string, keyPath string, mux *http.ServeMux) error {
+func tlsConfig(caPath, crtPath, keyPath string) (*tls.Config, error) {
 	cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
 	if err != nil {
-		return fmt.Errorf("Failed to load TLS cert/key pair from %v & %v: %v", crtPath, keyPath, err)
+		return nil, fmt.Errorf("Failed to load TLS cert/key pair from %v & %v: %v", crtPath, keyPath, err)
 	}
 
 	pem, err := ioutil.ReadFile(caPath)
 	if err != nil {
-		return fmt.Errorf("Failed to load CA file from %v: %v", caPath, err)
+		return nil, fmt.Errorf("Failed to load CA file from %v: %v", caPath, err)
 	}
 
 	certpool := x509.NewCertPool()
 	if !certpool.AppendCertsFromPEM(pem) {
-		return fmt.Errorf("Failed to parse CA file from %v", caPath)
+		return nil, fmt.Errorf("Failed to parse CA file from %v", caPath)
 	}
-	config := tls.Config{ // Make things "a little" incompatible but secure. Basics taken from https://cipherli.st .
+	config := &tls.Config{ // Make things "a little" incompatible but secure. Basics taken from https://cipherli.st .
 		Certificates:             []tls.Certificate{cert},
 		ClientCAs:                certpool,
 		Rand:                     rand.Reader,
@@ -55,10 +54,18 @@ func Serve(listen string, caPath string, crtPath string, keyPath string, mux *ht
 			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
 		},
 	}
+	return config, nil
+}
 
+// Serve creates a REST server secured by TLS with client cert authentication.
+func Serve(listen string, caPath string, crtPath string, keyPath string, mux *http.ServeMux) error {
+	tlsConfig, err := tlsConfig(caPath, crtPath, keyPath)
+	if err != nil {
+		return nil
+	}
 	server := http.Server{
 		Addr:              listen,
-		TLSConfig:         &config,
+		TLSConfig:         tlsConfig,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		Handler:           mux,

@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -25,7 +26,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/sk6812"
 )
 
-func sk6812Command(mux *http.ServeMux) *cobra.Command {
+func sk6812Command(ctx context.Context, mux *http.ServeMux) *cobra.Command {
 	flags := pflag.FlagSet{}
 	tty := flags.StringP("tty", "y", "/dev/ttyUSB0", "TTY to use for connection")
 
@@ -37,8 +38,10 @@ func sk6812Command(mux *http.ServeMux) *cobra.Command {
 			return applyEnvsToFlags(&flags, [][2]string{{"tty", "RIWERS_TTY"}})
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			mux.Handle("/color", sk6812.RESTHandler(*tty))
+			strip := sk6812.NewStrip(*tty)
+			mux.Handle("/color", sk6812.RESTHandler(strip))
 			mux.Handle("/metrics", promhttp.Handler())
+			go strip.Manage(ctx)
 		},
 	}
 	if err := cobra.MarkFlagFilename(&flags, "tty"); err != nil {

@@ -50,7 +50,7 @@ func (p *normalPin) Export() func() error {
 		if _, err := os.Stat(fmt.Sprintf("/sys/class/gpio/gpio%v/direction", p.identifier)); os.IsNotExist(err) {
 			f := p.exportFile
 
-			actions := []io.Action{f.Open(os.O_WRONLY, 0660), f.WriteString(p.identifier, nil)}
+			actions := []io.Action{f.Open(os.O_WRONLY, 0660), f.WriteString(p.identifier)}
 			if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
 				return fmt.Errorf("Could not export linux GPIO pin %v: %v", p.identifier, err)
 			}
@@ -68,7 +68,7 @@ func (p *normalPin) Direction(direction bool) func() error {
 		}
 		f := p.directionFile
 
-		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(d, nil)}
+		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(d)}
 		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
 			return fmt.Errorf("Could not set direction linux GPIO pin %v: %v", p.identifier, err)
 		}
@@ -104,7 +104,7 @@ func (p *normalPin) Write(value bool) func() error {
 			rawValue = "1"
 		}
 
-		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(rawValue, nil)}
+		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(rawValue)}
 
 		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
 			return fmt.Errorf("Could not write linux GPIO pin %v: %v", p.identifier, err)

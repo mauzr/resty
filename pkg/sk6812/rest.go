@@ -17,18 +17,20 @@ limitations under the License.
 package sk6812
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type setHandler struct {
-	tty            string
+	strip          *Strip
 	log            *log.Logger
 	httpErrorCount prometheus.Counter
 	setCount       prometheus.Counter
@@ -62,15 +64,17 @@ func (h setHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	timer := prometheus.NewTimer(h.setTime)
 
-	err = apply(h.tty, setting)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	err = h.strip.Set(ctx, setting)
 	timer.ObserveDuration()
 }
 
 // RESTHandler provides a http.Handler that sets an SK6812 chain
-func RESTHandler(tty string) http.Handler {
+func RESTHandler(strip *Strip) http.Handler {
 	return setHandler{
 		log:            log.New(os.Stderr, "", 0),
-		tty:            tty,
+		strip:          strip,
 		httpErrorCount: promauto.NewCounter(prometheus.CounterOpts{Name: "http_errors_total", Help: "Number of HTTP errors occurred"}),
 		setCount:       promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_total", Help: "Number of measurements executed"}),
 		setErrorCount:  promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_errors", Help: "Number of measurements failed"}),
