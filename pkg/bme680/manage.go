@@ -16,13 +16,16 @@ limitations under the License.
 
 package bme680
 
-import "time"
-import "context"
-import "log"
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"log"
+	"sync"
+	"time"
+)
 
 // Manager manages all functions of a chip
-type Manager struct {
+type manager struct {
 	bus                     string
 	device                  uint16
 	calibrations            Calibrations
@@ -33,17 +36,17 @@ type Manager struct {
 
 // Chip represents a BME280.
 type Chip interface {
-	Manage(ctx context.Context, logger *log.Logger)
+	Manage(ctx context.Context, wg *sync.WaitGroup, logger *log.Logger)
 	Measure(ctx context.Context, maxAge time.Duration) (Measurement, error)
 }
 
 // NewChip creates a new BME280 representation.
 func NewChip(bus string, device uint16) Chip {
-	return &Manager{bus, device, Calibrations{}, Measurement{}, make(chan Measurement), make(chan time.Duration)}
+	return &manager{bus, device, Calibrations{}, Measurement{}, make(chan Measurement), make(chan time.Duration)}
 }
 
 // Measure the current air state.
-func (m *Manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
+func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
 	for {
 		select {
 		case measurement, more := <-m.latestMeasurement:
@@ -65,7 +68,7 @@ func (m *Manager) Measure(ctx context.Context, maxAge time.Duration) (Measuremen
 	}
 }
 
-func (m *Manager) reset(ctx context.Context, logger *log.Logger) {
+func (m *manager) reset(ctx context.Context, logger *log.Logger) {
 	for {
 		if calibrations, err := Reset(m.bus, m.device); err == nil {
 			m.calibrations = calibrations
@@ -88,7 +91,7 @@ func (m *Manager) reset(ctx context.Context, logger *log.Logger) {
 	}
 }
 
-func (m *Manager) run(ctx context.Context, logger *log.Logger) {
+func (m *manager) run(ctx context.Context, logger *log.Logger) {
 	var measurement Measurement
 	for {
 		select {
@@ -110,7 +113,9 @@ func (m *Manager) run(ctx context.Context, logger *log.Logger) {
 }
 
 // Manage the chip.
-func (m *Manager) Manage(ctx context.Context, logger *log.Logger) {
+func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup, logger *log.Logger) {
+	wg.Add(1)
+	defer wg.Done()
 	defer close(m.latestMeasurement)
 	for {
 		select {

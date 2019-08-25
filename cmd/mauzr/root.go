@@ -20,48 +20,46 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"go.eqrx.net/mauzr/pkg"
 	"go.eqrx.net/mauzr/pkg/rest"
 )
 
-func applyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string) error {
-	for _, envToFlag := range envsToFlags {
-		flag, env := envToFlag[0], envToFlag[1]
-		if value, set := os.LookupEnv(env); set {
-			if err := flags.Set(flag, value); err != nil {
-				return fmt.Errorf("Could not apply environment variable %v with value %v to flag %v: %v", env, value, flag, err)
-			}
-		}
-	}
-	return nil
-}
-
 func main() {
-	flags := pflag.FlagSet{}
+	wg := sync.WaitGroup{}
+	ctx, cancel := context.WithCancel(context.Background())
+	go pkg.HandleTerminationSignals(ctx, cancel)
+	defer wg.Wait()
+	defer cancel()
 
+	flags := pflag.FlagSet{}
 	flags.StringToStringP("tags", "t", nil, "Tags to include in measurements")
 	hostname := flags.StringP("hostname", "n", "", "Name of this service that is used to bind and pick TLS certificates")
 	mux := http.NewServeMux()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	rootCommand := cobra.Command{
 		Use:          "mauzr <subcommand>",
 		Short:        "Expose devices to the network",
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return applyEnvsToFlags(&flags, [][2]string{{"tags", "MAUZR_TAGS"}, {"hostname", "MAUZR_HOSTNAME"}})
+			return pkg.ApplyEnvsToFlags(&flags, [][2]string{{"tags", "MAUZR_TAGS"}, {"hostname", "MAUZR_HOSTNAME"}})
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			if cmd.Name() != "help" {
-				return rest.Serve(fmt.Sprintf("%s:443", *hostname), "/etc/ssl/certs/mauzr-ca.crt",
-					fmt.Sprintf("/etc/ssl/certs/%s.crt", *hostname), fmt.Sprintf("/etc/ssl/private/%s.key", *hostname), mux)
+			if cmd.Name() == "help" {
+				return nil
 			}
-			return nil
+			tlsConfig, err := rest.ServerConfig(
+				"/etc/ssl/certs/mauzr-ca.crt",
+				fmt.Sprintf("/etc/ssl/certs/%s.crt", *hostname),
+				fmt.Sprintf("/etc/ssl/private/%s.key", *hostname),
+			)
+			if err != nil {
+				return err
+			}
+			return rest.Serve(ctx, fmt.Sprintf("%s:443", *hostname), tlsConfig, mux)
 		},
 	}
 	rootCommand.PersistentFlags().AddFlagSet(&flags)
@@ -69,10 +67,10 @@ func main() {
 	rootCommand.AddCommand(documentCmd(&rootCommand), completeCmd(&rootCommand))
 
 	subCommands := map[string]*cobra.Command{
-		"bme280": bme280Command(ctx, mux),
-		"bme680": bme680Command(ctx, mux),
-		"gpio":   gpioCommand(mux),
-		"sk6812": sk6812Command(ctx, mux),
+		"bme280": bme280Command(ctx, &wg, mux),
+		"bme680": bme680Command(ctx, &wg, mux),
+		"gpio":   gpioCommand(ctx, &wg, mux),
+		"sk6812": sk6812Command(ctx, &wg, mux),
 	}
 	for _, subCommand := range subCommands {
 		rootCommand.AddCommand(subCommand)

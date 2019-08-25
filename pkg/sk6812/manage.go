@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/io"
@@ -28,9 +29,14 @@ import (
 )
 
 // Strip represents a SK6812 strip.
-type Strip struct {
+type manager struct {
 	port     uart.Port
 	requests chan setRequest
+}
+
+type Strip interface {
+	Manage(context.Context, *sync.WaitGroup)
+	Set(context.Context, []uint8) error
 }
 
 type setRequest struct {
@@ -39,11 +45,11 @@ type setRequest struct {
 }
 
 // NewStrip creates a new SK6812 strip manager.
-func NewStrip(path string) *Strip {
-	return &Strip{uart.NewPort(path, unix.B115200), make(chan setRequest)}
+func NewStrip(path string) Strip {
+	return &manager{uart.NewPort(path, unix.B115200), make(chan setRequest)}
 }
 
-func (m *Strip) sendChannels(channels []uint8) io.Action {
+func (m *manager) sendChannels(channels []uint8) io.Action {
 	return func() error {
 		actions := []io.Action{
 			m.port.WriteBinary(binary.LittleEndian, uint16(len(channels))),
@@ -55,7 +61,9 @@ func (m *Strip) sendChannels(channels []uint8) io.Action {
 }
 
 // Manage performs management operations until canceled.
-func (m *Strip) Manage(ctx context.Context) {
+func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
 	defer close(m.requests)
 
 	for {
@@ -106,7 +114,7 @@ func (m *Strip) Manage(ctx context.Context) {
 }
 
 // Set lets the manager set the strip to the given channel setting.
-func (m *Strip) Set(ctx context.Context, channels []uint8) error {
+func (m *manager) Set(ctx context.Context, channels []uint8) error {
 	request := setRequest{make(chan []uint8), make(chan error)}
 	defer close(request.channels)
 	defer close(request.result)

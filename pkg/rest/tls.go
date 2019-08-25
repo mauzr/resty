@@ -22,11 +22,10 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"time"
 )
 
-func tlsConfig(caPath, crtPath, keyPath string) (*tls.Config, error) {
+// ServerConfig generate the TLS configuration for servers.
+func ServerConfig(caPath, crtPath, keyPath string) (*tls.Config, error) {
 	cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load TLS cert/key pair from %v & %v: %v", crtPath, keyPath, err)
@@ -57,20 +56,24 @@ func tlsConfig(caPath, crtPath, keyPath string) (*tls.Config, error) {
 	return config, nil
 }
 
-// Serve creates a REST server secured by TLS with client cert authentication.
-func Serve(listen string, caPath string, crtPath string, keyPath string, mux *http.ServeMux) error {
-	tlsConfig, err := tlsConfig(caPath, crtPath, keyPath)
+// ClientConfig generate the TLS configuration for clients.
+func ClientConfig(crtPath, keyPath string) (*tls.Config, error) {
+	cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("Failed to load TLS cert/key pair from %v & %v: %v", crtPath, keyPath, err)
 	}
-	server := http.Server{
-		Addr:              listen,
-		TLSConfig:         tlsConfig,
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		Handler:           mux,
-		// Disable HTTP v2.0 since that would require 128 bit ciphers.
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
+
+	config := &tls.Config{ // Make things "a little" incompatible but secure. Basics taken from https://cipherli.st .
+		Certificates:             []tls.Certificate{cert},
+		Rand:                     rand.Reader,
+		ClientAuth:               tls.RequireAndVerifyClientCert,
+		MinVersion:               tls.VersionTLS12,
+		PreferServerCipherSuites: true,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		},
 	}
-	return server.ListenAndServeTLS("", "")
+	return config, nil
 }

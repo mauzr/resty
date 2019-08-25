@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,7 +29,7 @@ import (
 )
 
 type setHandler struct {
-	strip          *Strip
+	strip          Strip
 	log            *log.Logger
 	httpErrorCount prometheus.Counter
 	setCount       prometheus.Counter
@@ -71,9 +70,9 @@ func (h setHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // RESTHandler provides a http.Handler that sets an SK6812 chain
-func RESTHandler(strip *Strip) http.Handler {
+func RESTHandler(logger *log.Logger, strip Strip) http.Handler {
 	return setHandler{
-		log:            log.New(os.Stderr, "", 0),
+		log:            logger,
 		strip:          strip,
 		httpErrorCount: promauto.NewCounter(prometheus.CounterOpts{Name: "http_errors_total", Help: "Number of HTTP errors occurred"}),
 		setCount:       promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_total", Help: "Number of measurements executed"}),

@@ -5,14 +5,16 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"go.eqrx.net/mauzr/pkg"
 	"go.eqrx.net/mauzr/pkg/bme280"
 )
 
-func bme280Command(ctx context.Context, mux *http.ServeMux) *cobra.Command {
+func bme280Command(ctx context.Context, wg *sync.WaitGroup, mux *http.ServeMux) *cobra.Command {
 	flags := pflag.FlagSet{}
 	bus := flags.StringP("bus", "b", "/dev/i2c-1", "Path of the linux bus to use")
 	address := flags.Uint16P("address", "a", 0x77, "I2C address of the device")
@@ -22,15 +24,15 @@ func bme280Command(ctx context.Context, mux *http.ServeMux) *cobra.Command {
 		Short: "Expose a BME280 driver",
 		Long:  "Expose a BME280 driver via REST.",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return applyEnvsToFlags(&flags, [][2]string{{"bus", "MAUZR_BUS"}, {"address", "MAUZR_ADDRESS"}})
+			return pkg.ApplyEnvsToFlags(&flags, [][2]string{{"bus", "MAUZR_BUS"}, {"address", "MAUZR_ADDRESS"}})
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			logger := log.New(os.Stderr, "", 0)
 			if tags, err := cmd.Root().PersistentFlags().GetStringToString("tags"); err == nil {
 				chip := bme280.NewChip(*bus, *address)
 				mux.Handle("/metrics", promhttp.Handler())
-				mux.Handle("/measurement", bme280.RESTHandler(ctx, logger, chip, tags))
-				go chip.Manage(ctx, logger)
+				mux.Handle("/measurement", bme280.RESTHandler(logger, chip, tags))
+				go chip.Manage(ctx, wg, logger)
 			}
 			return
 		},

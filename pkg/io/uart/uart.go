@@ -97,10 +97,12 @@ func (p *normalPort) DTR(value bool) io.Action {
 	return p.file.Ioctl(unix.TIOCMBIC, uintptr(unsafe.Pointer(&mask)))
 }
 
+// ResetOutput purges UART output that hasn't been sent yet.
 func (p *normalPort) ResetOutput() io.Action {
 	return p.file.Ioctl(unix.TCFLSH, unix.TCOFLUSH)
 }
 
+// ResetOutput purges UART input that hasn't been handled yet.
 func (p *normalPort) ResetInput() io.Action {
 	return p.file.Ioctl(unix.TCFLSH, unix.TCIFLUSH)
 }

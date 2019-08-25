@@ -88,7 +88,7 @@ func (h measurementHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // RESTHandler creates a http.Handler that handles BME280 measurements.
-func RESTHandler(ctx context.Context, logger *log.Logger, chip Chip, tags map[string]string) http.Handler {
+func RESTHandler(logger *log.Logger, chip Chip, tags map[string]string) http.Handler {
 	return measurementHandler{logger, chip, tags,
 		promauto.NewCounter(prometheus.CounterOpts{Name: "http_errors_total", Help: "Number of HTTP errors occurred"}),
 		promauto.NewCounter(prometheus.CounterOpts{Name: "measurements_total", Help: "Number of measurements executed"}),

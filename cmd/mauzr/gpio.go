@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"net/http"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"go.eqrx.net/mauzr/pkg/gpio"
 )
 
-func gpioCommand(mux *http.ServeMux) *cobra.Command {
+func gpioCommand(ctx context.Context, wg *sync.WaitGroup, mux *http.ServeMux) *cobra.Command {
 	command := cobra.Command{
 		Use:   "gpio",
 		Short: "Expose a GPIO driver",
