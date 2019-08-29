@@ -96,6 +96,23 @@ func Int(target *int, name string, optional bool) Argument {
 	}
 }
 
+// Float represents a float64 argument.
+func Float(target *float64, name string, optional bool) Argument {
+	return func(url *url.URL) error {
+		rawValue, set, err := stringFromURL(url, name, optional)
+		if !set || err != nil {
+			return err
+		}
+
+		value, err := strconv.ParseFloat(rawValue, 64)
+		if err != nil {
+			return fmt.Errorf("Could not parse float from URL argument %v: %v", name, err)
+		}
+		*target = value
+		return nil
+	}
+}
+
 // Uint represents an unsigned integer argument.
 func Uint(target *uint, name string, optional bool) Argument {
 	return func(url *url.URL) error {
