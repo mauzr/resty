@@ -37,9 +37,9 @@ func Serve(ctx context.Context, listen string, tlsConfig *tls.Config, mux *http.
 
 	go func() {
 		<-ctx.Done()
-		http_ctx, http_cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer http_cancel()
-		if err := server.Shutdown(http_ctx); err != nil {
+		httpCtx, httpCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer httpCancel()
+		if err := server.Shutdown(httpCtx); err != nil {
 			panic(err)
 		}
 	}()

@@ -28,20 +28,20 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Strip represents a SK6812 strip.
 type manager struct {
 	port     uart.Port
 	requests chan setRequest
 }
 
-type Strip interface {
-	Manage(context.Context, *sync.WaitGroup)
-	Set(context.Context, []uint8) error
-}
-
 type setRequest struct {
 	channels chan []uint8
 	result   chan error
+}
+
+// Strip represents a SK6812 strip.
+type Strip interface {
+	Manage(context.Context, *sync.WaitGroup)
+	Set(context.Context, []uint8) error
 }
 
 // NewStrip creates a new SK6812 strip manager.
