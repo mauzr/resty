@@ -1,7 +1,7 @@
 GOLDFLAGS=-s -w -extldflags '-zrelro -znow'
 
 .PHONY: all
-all: dist/arm64/mauzr dist/amd64/mauzr
+all: build
 
 .PHONY: dist/arm64/mauzr
 dist/arm64/mauzr:
@@ -10,6 +10,9 @@ dist/arm64/mauzr:
 .PHONY: dist/amd64/mauzr
 dist/amd64/mauzr:
 	GOARCH=amd64 go build -trimpath -ldflags "$(GOLDFLAGS)" -o $@ ./cmd/mauzr
+
+.PHONY: build
+build: dist/arm64/mauzr dist/amd64/mauzr
 
 .PHONY: benchmark
 benchmark:
@@ -22,3 +25,7 @@ test:
 .PHONY: vet
 vet:
 	go vet ./...
+
+.PHONY: download
+download:
+	go mod download
