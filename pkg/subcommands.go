@@ -14,13 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package pkg
 
 import (
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"go.eqrx.net/mauzr/pkg/bme280"
+	"go.eqrx.net/mauzr/pkg/bme680"
+	"go.eqrx.net/mauzr/pkg/gpio"
+	"go.eqrx.net/mauzr/pkg/program"
+	"go.eqrx.net/mauzr/pkg/sk6812"
 )
 
 func completeCmd(rootCmd *cobra.Command) *cobra.Command {
@@ -53,7 +58,7 @@ func documentCmd(rootCmd *cobra.Command) *cobra.Command {
 			switch args[0] {
 			case "man":
 				header := &doc.GenManHeader{
-					Title:   "KubeOne",
+					Title:   "Mauzr",
 					Section: "1",
 				}
 				err = doc.GenManTree(rootCmd, header, path)
@@ -69,4 +74,19 @@ func documentCmd(rootCmd *cobra.Command) *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&path, "output-dir", "o", "/tmp/", "Directory to populate with documentation")
 	return cmd
+}
+
+// SetupCommands adds subcommands of this pkg.
+func SetupCommands(p *program.Program) {
+	subCommands := []*cobra.Command{
+		documentCmd(p.RootCommand),
+		completeCmd(p.RootCommand),
+		bme280.SubCommand(p),
+		bme680.SubCommand(p),
+		gpio.SubCommand(p),
+		sk6812.SubCommand(p),
+	}
+	for _, subCommand := range subCommands {
+		p.RootCommand.AddCommand(subCommand)
+	}
 }

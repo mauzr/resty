@@ -14,38 +14,76 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package program
 
 import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"go.eqrx.net/mauzr/pkg"
+
 	"go.eqrx.net/mauzr/pkg/rest"
 )
 
-func main() {
-	wg := sync.WaitGroup{}
+type Program struct {
+	RootCommand *cobra.Command
+	Wg          *sync.WaitGroup
+	Ctx         context.Context
+	Cancel      func()
+	Hostname    *string
+	Mux         *http.ServeMux
+}
+
+// ApplyEnvsToFlags maps given environment variable names and maps them to flags.
+func (p *Program) ApplyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string) error {
+	for _, envToFlag := range envsToFlags {
+		flag, env := envToFlag[0], envToFlag[1]
+		if value, set := os.LookupEnv(env); set {
+			if err := flags.Set(flag, value); err != nil {
+				return fmt.Errorf("Could not apply environment variable %v with value %v to flag %v: %v", env, value, flag, err)
+			}
+		}
+	}
+	return nil
+}
+
+// HandleTerminationSignals executes the given cancel function when a shutdown signal is received.
+func (p *Program) HandleTerminationSignals() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGINT)
+	select {
+	case <-c:
+		p.Cancel()
+	case <-p.Ctx.Done():
+	}
+}
+
+func NewProgram() *Program {
 	ctx, cancel := context.WithCancel(context.Background())
-	go pkg.HandleTerminationSignals(ctx, cancel)
-	defer wg.Wait()
-	defer cancel()
 
 	flags := pflag.FlagSet{}
 	flags.StringToStringP("tags", "t", nil, "Tags to include in measurements")
 	hostname := flags.StringP("hostname", "n", "", "Name of this service that is used to bind and pick TLS certificates")
+
 	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	var program *Program
 
 	rootCommand := cobra.Command{
 		Use:          "mauzr <subcommand>",
 		Short:        "Expose devices to the network",
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return pkg.ApplyEnvsToFlags(&flags, [][2]string{{"tags", "MAUZR_TAGS"}, {"hostname", "MAUZR_HOSTNAME"}})
+			return program.ApplyEnvsToFlags(&flags, [][2]string{{"tags", "MAUZR_TAGS"}, {"hostname", "MAUZR_HOSTNAME"}})
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() == "help" {
@@ -64,18 +102,14 @@ func main() {
 	}
 	rootCommand.PersistentFlags().AddFlagSet(&flags)
 
-	rootCommand.AddCommand(documentCmd(&rootCommand), completeCmd(&rootCommand))
-
-	subCommands := map[string]*cobra.Command{
-		"bme280": bme280Command(ctx, &wg, mux),
-		"bme680": bme680Command(ctx, &wg, mux),
-		"gpio":   gpioCommand(ctx, &wg, mux),
-		"sk6812": sk6812Command(ctx, &wg, mux),
+	program = &Program{
+		&rootCommand,
+		&sync.WaitGroup{},
+		ctx,
+		cancel,
+		hostname,
+		mux,
 	}
-	for _, subCommand := range subCommands {
-		rootCommand.AddCommand(subCommand)
-	}
-	if err := rootCommand.Execute(); err != nil {
-		panic(err)
-	}
+	go program.HandleTerminationSignals()
+	return program
 }
