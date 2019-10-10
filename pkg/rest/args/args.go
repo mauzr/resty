@@ -79,6 +79,14 @@ func Bool(target *bool, name string, optional bool) Argument {
 	}
 }
 
+// Stripped URL without query is returned.
+func Stripped(target *string) Argument {
+	return func(url *url.URL) error {
+		*target = url.Scheme + url.Host + url.Path
+		return nil
+	}
+}
+
 // Int represents a integer argument.
 func Int(target *int, name string, optional bool) Argument {
 	return func(url *url.URL) error {
