@@ -45,7 +45,7 @@ func (h measurementHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	timer := prometheus.NewTimer(h.measureTime)
 	defer timer.ObserveDuration()
 
-	if r.Method != "GET" {
+	if r.Method != http.MethodGet {
 		h.httpErrorCount.Inc()
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return

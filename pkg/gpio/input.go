@@ -33,7 +33,7 @@ type inputHandler struct {
 // ServeHTTP handles GPIO input requests
 func (h inputHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rest.ServerHeader(w.Header())
-	if r.Method != "GET" {
+	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
