@@ -24,6 +24,8 @@ import (
 	"net/http"
 	"time"
 
+	"go.eqrx.net/mauzr/pkg/rest"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -39,8 +41,7 @@ type setHandler struct {
 
 // ServeHTTP handles sets to the SK6812 chain
 func (h setHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-
+	rest.ServerHeader(w.Header())
 	if r.Method != "POST" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return

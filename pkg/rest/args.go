@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package args
+package rest
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ import (
 type Argument func(*url.URL) error
 
 // Collect all the given arguments.
-func Collect(url *url.URL, arguments []Argument) error {
+func CollectArguments(url *url.URL, arguments []Argument) error {
 	for _, argument := range arguments {
 		if err := argument(url); err != nil {
 			return err
@@ -62,8 +62,8 @@ func stringFromURL(url *url.URL, name string, optional bool) (string, bool, erro
 	return values[0], true, nil
 }
 
-// Bool represents a bool type argument.
-func Bool(target *bool, name string, optional bool) Argument {
+// BoolArgument represents a bool type argument.
+func BoolArgument(target *bool, name string, optional bool) Argument {
 	return func(url *url.URL) error {
 		rawValue, set, err := stringFromURL(url, name, optional)
 		if !set || err != nil {
@@ -79,16 +79,16 @@ func Bool(target *bool, name string, optional bool) Argument {
 	}
 }
 
-// Stripped URL without query is returned.
-func Stripped(target *string) Argument {
+// StrippedURL without query is returned.
+func StrippedURL(target *string) Argument {
 	return func(url *url.URL) error {
 		*target = url.Scheme + url.Host + url.Path
 		return nil
 	}
 }
 
-// Int represents a integer argument.
-func Int(target *int, name string, optional bool) Argument {
+// IntArgument represents a integer argument.
+func IntArgument(target *int, name string, optional bool) Argument {
 	return func(url *url.URL) error {
 		rawValue, set, err := stringFromURL(url, name, optional)
 		if !set || err != nil {
@@ -104,8 +104,8 @@ func Int(target *int, name string, optional bool) Argument {
 	}
 }
 
-// Float represents a float64 argument.
-func Float(target *float64, name string, optional bool) Argument {
+// FloatArgument represents a float64 argument.
+func FloatArgument(target *float64, name string, optional bool) Argument {
 	return func(url *url.URL) error {
 		rawValue, set, err := stringFromURL(url, name, optional)
 		if !set || err != nil {
@@ -121,8 +121,8 @@ func Float(target *float64, name string, optional bool) Argument {
 	}
 }
 
-// Uint represents an unsigned integer argument.
-func Uint(target *uint, name string, optional bool) Argument {
+// UintArgument represents an unsigned integer argument.
+func UintArgument(target *uint, name string, optional bool) Argument {
 	return func(url *url.URL) error {
 		rawValue, set, err := stringFromURL(url, name, optional)
 		if !set || err != nil {
@@ -138,8 +138,8 @@ func Uint(target *uint, name string, optional bool) Argument {
 	}
 }
 
-// Duration represents an time duration argument.
-func Duration(target *time.Duration, name string, optional bool) Argument {
+// DurationArgument represents an time duration argument.
+func DurationArgument(target *time.Duration, name string, optional bool) Argument {
 	return func(url *url.URL) error {
 		rawValue, set, err := stringFromURL(url, name, optional)
 		if !set || err != nil {
@@ -155,8 +155,8 @@ func Duration(target *time.Duration, name string, optional bool) Argument {
 	}
 }
 
-// String represents a string argument.
-func String(target *string, name string, optional bool) Argument {
+// StringArgument represents a string argument.
+func StringArgument(target *string, name string, optional bool) Argument {
 	return func(url *url.URL) error {
 		value, set, err := stringFromURL(url, name, optional)
 		if !set || err != nil {

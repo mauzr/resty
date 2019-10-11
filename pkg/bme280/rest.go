@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"time"
 
-	"go.eqrx.net/mauzr/pkg/rest/args"
+	"go.eqrx.net/mauzr/pkg/rest"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -41,7 +41,7 @@ type measurementHandler struct {
 
 // ServeHTTP serves BME280 measurement requests.
 func (h measurementHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+	rest.ServerHeader(w.Header())
 	timer := prometheus.NewTimer(h.measureTime)
 	defer timer.ObserveDuration()
 
@@ -52,7 +52,7 @@ func (h measurementHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var maxAge time.Duration
-	if err := args.Collect(r.URL, []args.Argument{args.Duration(&maxAge, "maxAge", false)}); err != nil {
+	if err := rest.CollectArguments(r.URL, []rest.Argument{rest.DurationArgument(&maxAge, "maxAge", false)}); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 )
 
 // ServerConfig generate the TLS configuration for servers.
@@ -45,7 +46,7 @@ func ServerConfig(caPath, crtPath, keyPath string) (*tls.Config, error) {
 		ClientCAs:                certpool,
 		Rand:                     rand.Reader,
 		ClientAuth:               tls.RequireAndVerifyClientCert,
-		MinVersion:               tls.VersionTLS12,
+		MinVersion:               tls.VersionTLS13,
 		PreferServerCipherSuites: true,
 		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 		CipherSuites: []uint16{
@@ -54,6 +55,10 @@ func ServerConfig(caPath, crtPath, keyPath string) (*tls.Config, error) {
 		},
 	}
 	return config, nil
+}
+
+func ServerHeader(header http.Header) {
+	header.Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 }
 
 // ClientConfig generate the TLS configuration for clients.
@@ -67,8 +72,8 @@ func ClientConfig(crtPath, keyPath string) (*tls.Config, error) {
 		Certificates:             []tls.Certificate{cert},
 		Rand:                     rand.Reader,
 		ClientAuth:               tls.RequireAndVerifyClientCert,
-		MinVersion:               tls.VersionTLS12,
-		PreferServerCipherSuites: true,
+		MinVersion:               tls.VersionTLS13,
+		PreferServerCipherSuites: false,
 		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 		CipherSuites: []uint16{
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,

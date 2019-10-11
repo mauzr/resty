@@ -23,7 +23,7 @@ import (
 	"strconv"
 
 	"go.eqrx.net/mauzr/pkg/io"
-	"go.eqrx.net/mauzr/pkg/rest/args"
+	"go.eqrx.net/mauzr/pkg/rest"
 )
 
 type inputHandler struct {
@@ -32,8 +32,7 @@ type inputHandler struct {
 
 // ServeHTTP handles GPIO input requests
 func (h inputHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-
+	rest.ServerHeader(w.Header())
 	if r.Method != "GET" {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -42,12 +41,12 @@ func (h inputHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var identifier string
 	var pull uint
 
-	arguments := []args.Argument{
-		args.String(&identifier, "identifier", false),
-		args.Uint(&pull, "pull", true),
+	arguments := []rest.Argument{
+		rest.StringArgument(&identifier, "identifier", false),
+		rest.UintArgument(&pull, "pull", true),
 	}
 
-	if err := args.Collect(r.URL, arguments); err != nil {
+	if err := rest.CollectArguments(r.URL, arguments); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
