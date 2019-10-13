@@ -72,7 +72,7 @@ func Reset(bus string, address uint16) (Calibrations, error) {
 		device.WriteRead([]byte{0xe1}, data[26:35]),
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Calibrations{}, fmt.Errorf("Could not reset chip: %v", err)
+		return Calibrations{}, fmt.Errorf("could not reset chip: %v", err)
 	}
 
 	var i calibrationInput
@@ -84,7 +84,6 @@ func Reset(bus string, address uint16) (Calibrations, error) {
 		PressureCalibration{i.P1, i.P2, i.P3, i.P4, i.P5, i.P6, i.P7, i.P8, i.P9},
 		TemperatureCalibration{i.T1, i.T2, i.T3},
 	}, nil
-
 }
 
 // Measure creates a measurement with the given BME280 behind the given address.
@@ -99,7 +98,7 @@ func Measure(bus string, address uint16, calibrations Calibrations) (Measurement
 		device.WriteRead([]byte{0xf7}, reading[:]),
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Measurement{}, fmt.Errorf("Could not read measurement from chip: %v", err)
+		return Measurement{}, fmt.Errorf("could not read measurement from chip: %v", err)
 	}
 
 	pReading := (uint32(reading[0])<<16 | uint32(reading[1])<<8 | uint32(reading[2])) >> 4

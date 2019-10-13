@@ -47,7 +47,7 @@ func (p *Program) ApplyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string
 		flag, env := envToFlag[0], envToFlag[1]
 		if value, set := os.LookupEnv(env); set {
 			if err := flags.Set(flag, value); err != nil {
-				return fmt.Errorf("Could not apply environment variable %v with value %v to flag %v: %v", env, value, flag, err)
+				return fmt.Errorf("could not apply environment variable %v with value %v to flag %v: %v", env, value, flag, err)
 			}
 		}
 	}
@@ -66,7 +66,7 @@ func (p *Program) HandleTerminationSignals() {
 	}
 }
 
-func NewProgram() *Program {
+func New() *Program {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	flags := pflag.FlagSet{}
@@ -89,15 +89,14 @@ func NewProgram() *Program {
 			if cmd.Name() == "help" {
 				return nil
 			}
-			tlsConfig, err := rest.ServerConfig(
+			server := rest.NewServer(
+				mux,
 				"/etc/ssl/certs/mauzr-ca.crt",
 				fmt.Sprintf("/etc/ssl/certs/%s.crt", *hostname),
 				fmt.Sprintf("/etc/ssl/private/%s.key", *hostname),
+				fmt.Sprintf("%s:443", *hostname),
 			)
-			if err != nil {
-				return err
-			}
-			return rest.Serve(ctx, fmt.Sprintf("%s:443", *hostname), tlsConfig, mux)
+			return server.Serve(ctx)
 		},
 	}
 	rootCommand.PersistentFlags().AddFlagSet(&flags)

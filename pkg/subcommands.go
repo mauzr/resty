@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra/doc"
 	"go.eqrx.net/mauzr/pkg/bme280"
 	"go.eqrx.net/mauzr/pkg/bme680"
-	"go.eqrx.net/mauzr/pkg/gpio"
 	"go.eqrx.net/mauzr/pkg/program"
 	"go.eqrx.net/mauzr/pkg/sk6812"
 )
@@ -72,7 +71,9 @@ func documentCmd(rootCmd *cobra.Command) *cobra.Command {
 			return
 		},
 	}
+
 	cmd.Flags().StringVarP(&path, "output-dir", "o", "/tmp/", "Directory to populate with documentation")
+
 	return cmd
 }
 
@@ -83,7 +84,6 @@ func SetupCommands(p *program.Program) {
 		completeCmd(p.RootCommand),
 		bme280.SubCommand(p),
 		bme680.SubCommand(p),
-		gpio.SubCommand(p),
 		sk6812.SubCommand(p),
 	}
 	for _, subCommand := range subCommands {

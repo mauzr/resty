@@ -24,10 +24,10 @@ import (
 )
 
 // Argument is an argument that can be collected from an URL.
-type Argument func(*url.URL) error
+type Argument func(url.URL) error
 
 // Collect all the given arguments.
-func CollectArguments(url *url.URL, arguments []Argument) error {
+func CollectArguments(url url.URL, arguments []Argument) error {
 	for _, argument := range arguments {
 		if err := argument(url); err != nil {
 			return err
@@ -36,43 +36,39 @@ func CollectArguments(url *url.URL, arguments []Argument) error {
 	return nil
 }
 
-func stringFromURL(url *url.URL, name string, optional bool) (string, bool, error) {
+func stringFromURL(name string, url url.URL, set *bool) (string, error) {
 	values, ok := url.Query()[name]
 
-	if !ok && optional {
-		return "", false, nil
+	if set != nil {
+		*set = ok
 	}
 
-	if !ok {
-		return "", false, fmt.Errorf("URL does not contain argument %v", name)
+	switch {
+	case ok && len(values) > 1:
+		return "", fmt.Errorf("url contains %v multiple times", name)
+	case ok:
+		return values[0], nil
+	case !ok && set != nil:
+		return "", nil
+	default:
+		return "", fmt.Errorf("url does not contain argument %v", name)
 	}
-
-	if len(values) > 1 {
-		return "", false, fmt.Errorf("URL contains %v multiple times", name)
-	}
-
-	if len(values) < 1 && !optional {
-		return "", false, fmt.Errorf("URL does not contain %v", name)
-	}
-
-	if len(values) < 1 {
-		return "", false, nil
-	}
-
-	return values[0], true, nil
 }
 
 // BoolArgument represents a bool type argument.
-func BoolArgument(target *bool, name string, optional bool) Argument {
-	return func(url *url.URL) error {
-		rawValue, set, err := stringFromURL(url, name, optional)
-		if !set || err != nil {
+func BoolArgument(name string, target *bool, set *bool) Argument {
+	return func(url url.URL) error {
+		rawValue, err := stringFromURL(name, url, set)
+		switch {
+		case err != nil:
 			return err
+		case set != nil && !*set:
+			return nil
 		}
 
 		value, err := strconv.ParseBool(rawValue)
 		if err != nil {
-			return fmt.Errorf("Could not parse bool from URL argument %v: %v", name, err)
+			return fmt.Errorf("could not parse bool from URL argument %v: %v", name, err)
 		}
 		*target = value
 		return nil
@@ -81,23 +77,26 @@ func BoolArgument(target *bool, name string, optional bool) Argument {
 
 // StrippedURL without query is returned.
 func StrippedURL(target *string) Argument {
-	return func(url *url.URL) error {
+	return func(url url.URL) error {
 		*target = url.Scheme + url.Host + url.Path
 		return nil
 	}
 }
 
 // IntArgument represents a integer argument.
-func IntArgument(target *int, name string, optional bool) Argument {
-	return func(url *url.URL) error {
-		rawValue, set, err := stringFromURL(url, name, optional)
-		if !set || err != nil {
+func IntArgument(name string, target *int, set *bool) Argument {
+	return func(url url.URL) error {
+		rawValue, err := stringFromURL(name, url, set)
+		switch {
+		case err != nil:
 			return err
+		case set != nil && !*set:
+			return nil
 		}
 
 		value, err := strconv.ParseInt(rawValue, 10, 0)
 		if err != nil {
-			return fmt.Errorf("Could not parse int from URL argument %v: %v", name, err)
+			return fmt.Errorf("could not parse int from URL argument %v: %v", name, err)
 		}
 		*target = int(value)
 		return nil
@@ -105,16 +104,19 @@ func IntArgument(target *int, name string, optional bool) Argument {
 }
 
 // FloatArgument represents a float64 argument.
-func FloatArgument(target *float64, name string, optional bool) Argument {
-	return func(url *url.URL) error {
-		rawValue, set, err := stringFromURL(url, name, optional)
-		if !set || err != nil {
+func FloatArgument(name string, target *float64, set *bool) Argument {
+	return func(url url.URL) error {
+		rawValue, err := stringFromURL(name, url, set)
+		switch {
+		case err != nil:
 			return err
+		case set != nil && !*set:
+			return nil
 		}
 
 		value, err := strconv.ParseFloat(rawValue, 64)
 		if err != nil {
-			return fmt.Errorf("Could not parse float from URL argument %v: %v", name, err)
+			return fmt.Errorf("could not parse float from URL argument %v: %v", name, err)
 		}
 		*target = value
 		return nil
@@ -122,16 +124,19 @@ func FloatArgument(target *float64, name string, optional bool) Argument {
 }
 
 // UintArgument represents an unsigned integer argument.
-func UintArgument(target *uint, name string, optional bool) Argument {
-	return func(url *url.URL) error {
-		rawValue, set, err := stringFromURL(url, name, optional)
-		if !set || err != nil {
+func UintArgument(name string, target *uint, set *bool) Argument {
+	return func(url url.URL) error {
+		rawValue, err := stringFromURL(name, url, set)
+		switch {
+		case err != nil:
 			return err
+		case set != nil && !*set:
+			return nil
 		}
 
 		value, err := strconv.ParseUint(rawValue, 10, 0)
 		if err != nil {
-			return fmt.Errorf("Could not parse int from URL argument %v: %v", name, err)
+			return fmt.Errorf("could not parse int from URL argument %v: %v", name, err)
 		}
 		*target = uint(value)
 		return nil
@@ -139,16 +144,19 @@ func UintArgument(target *uint, name string, optional bool) Argument {
 }
 
 // DurationArgument represents an time duration argument.
-func DurationArgument(target *time.Duration, name string, optional bool) Argument {
-	return func(url *url.URL) error {
-		rawValue, set, err := stringFromURL(url, name, optional)
-		if !set || err != nil {
+func DurationArgument(name string, target *time.Duration, set *bool) Argument {
+	return func(url url.URL) error {
+		rawValue, err := stringFromURL(name, url, set)
+		switch {
+		case err != nil:
 			return err
+		case set != nil && !*set:
+			return nil
 		}
 
 		value, err := time.ParseDuration(rawValue)
 		if err != nil {
-			return fmt.Errorf("Could not parse duration from URL argument %v: %v", name, err)
+			return fmt.Errorf("could not parse duration from URL argument %v: %v", name, err)
 		}
 		*target = value
 		return nil
@@ -156,12 +164,16 @@ func DurationArgument(target *time.Duration, name string, optional bool) Argumen
 }
 
 // StringArgument represents a string argument.
-func StringArgument(target *string, name string, optional bool) Argument {
-	return func(url *url.URL) error {
-		value, set, err := stringFromURL(url, name, optional)
-		if !set || err != nil {
+func StringArgument(name string, target *string, set *bool) Argument {
+	return func(url url.URL) error {
+		value, err := stringFromURL(name, url, set)
+		switch {
+		case err != nil:
 			return err
+		case set != nil && !*set:
+			return nil
 		}
+
 		*target = value
 		return nil
 	}

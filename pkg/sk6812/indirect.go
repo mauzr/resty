@@ -34,7 +34,7 @@ func apply(tty string, setting []uint8) error {
 		f.WriteBinary(binary.LittleEndian, setting),
 	}
 	if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-		return fmt.Errorf("Could set write setting: %v", err)
+		return fmt.Errorf("could set write setting: %v", err)
 	}
 	return nil
 }

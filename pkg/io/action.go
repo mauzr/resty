@@ -25,6 +25,7 @@ type Action func() error
 // fails. After Actions are handled, all cleanup actions all executed.
 func Execute(actions, cleanup []Action) error {
 	var firstError error
+
 	for _, action := range actions {
 		if err := action(); err != nil {
 			firstError = err
@@ -37,6 +38,7 @@ func Execute(actions, cleanup []Action) error {
 			firstError = err
 		}
 	}
+
 	return firstError
 }
 

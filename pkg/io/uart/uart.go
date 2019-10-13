@@ -82,6 +82,7 @@ func (p *normalPort) WriteBinary(order binary.ByteOrder, data interface{}) io.Ac
 // RTS state setting.
 func (p *normalPort) RTS(value bool) io.Action {
 	var mask int = unix.TIOCM_RTS
+
 	if value {
 		return p.file.Ioctl(unix.TIOCMBIS, uintptr(unsafe.Pointer(&mask)))
 	}

@@ -16,11 +16,10 @@ limitations under the License.
 
 package gpio
 
-import "strconv"
-
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"go.eqrx.net/mauzr/pkg/io"
 	"go.eqrx.net/mauzr/pkg/io/file"
@@ -52,7 +51,7 @@ func (p *normalPin) Export() func() error {
 
 			actions := []io.Action{f.Open(os.O_WRONLY, 0660), f.WriteString(p.identifier)}
 			if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-				return fmt.Errorf("Could not export linux GPIO pin %v: %v", p.identifier, err)
+				return fmt.Errorf("could not export linux GPIO pin %v: %v", p.identifier, err)
 			}
 		}
 		return nil
@@ -70,11 +69,10 @@ func (p *normalPin) Direction(direction bool) func() error {
 
 		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(d)}
 		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("Could not set direction linux GPIO pin %v: %v", p.identifier, err)
+			return fmt.Errorf("could not set direction linux GPIO pin %v: %v", p.identifier, err)
 		}
 		return nil
 	}
-
 }
 
 // Read the pin value
@@ -85,9 +83,9 @@ func (p *normalPin) Read(destination *bool) func() error {
 
 		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.ReadString(&rawValue, 1)}
 		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("Could not read linux GPIO pin %v: %v", p.identifier, err)
+			return fmt.Errorf("could not read linux GPIO pin %v: %v", p.identifier, err)
 		} else if v, err := strconv.ParseBool(rawValue); err != nil {
-			return fmt.Errorf("Could not parse linux GPIO pin %v value: %v", p.identifier, err)
+			return fmt.Errorf("could not parse linux GPIO pin %v value: %v", p.identifier, err)
 		} else {
 			*destination = v
 			return nil
@@ -107,7 +105,7 @@ func (p *normalPin) Write(value bool) func() error {
 		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(rawValue)}
 
 		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("Could not write linux GPIO pin %v: %v", p.identifier, err)
+			return fmt.Errorf("could not write linux GPIO pin %v: %v", p.identifier, err)
 		}
 		return nil
 	}

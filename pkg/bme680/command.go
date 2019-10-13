@@ -17,9 +17,6 @@ limitations under the License.
 package bme680
 
 import (
-	"log"
-	"os"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"go.eqrx.net/mauzr/pkg/program"
@@ -39,18 +36,19 @@ func SubCommand(p *program.Program) *cobra.Command {
 			return p.ApplyEnvsToFlags(&flags, [][2]string{{"bus", "MAUZR_BUS"}, {"address", "MAUZR_ADDRESS"}})
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			logger := log.New(os.Stderr, "", 0)
 			if tags, err := cmd.Root().PersistentFlags().GetStringToString("tags"); err == nil {
 				chip := NewChip(*bus, *address)
-				p.Mux.Handle("/measurement", RESTHandler(logger, chip, tags))
-				go chip.Manage(p.Ctx, p.Wg, logger)
+				setupHandler(p.Mux, chip, tags)
+				go chip.Manage(p.Ctx, p.Wg)
 			}
 			return
 		},
 	}
+
 	if err := cobra.MarkFlagFilename(&flags, "bus"); err != nil {
 		panic(err)
 	}
 	command.Flags().AddFlagSet(&flags)
+
 	return &command
 }

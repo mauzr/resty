@@ -22,10 +22,11 @@ import (
 )
 
 func main() {
-	p := program.NewProgram()
-	pkg.SetupCommands(p)
+	p := program.New()
 	defer p.Wg.Wait()
 	defer p.Cancel()
+	pkg.SetupCommands(p)
+
 	if err := p.RootCommand.Execute(); err != nil {
 		panic(err)
 	}

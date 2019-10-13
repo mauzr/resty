@@ -40,7 +40,8 @@ func init() {
 	// Notice: If you use a Raspberry PI you need to pin the GPU frequency to a
 	// value of your choosing (e.g. 250MHz) since the clock speed may change
 	// while inside a translation.
-	halfNibbleTranslation := []byte{0xcc, 0xc8, 0x8c, 0x88}
+	halfNibbleTranslation := [4]byte{0xcc, 0xc8, 0x8c, 0x88}
+
 	for i := range translation {
 		for j := 0; j < 4; j++ {
 			offset := 6 - 2*j

@@ -36,6 +36,7 @@ func TestTemperatureCompensation(t *testing.T) {
 		t.Errorf("temperatureCalibration.Compensate(%v) returned tfine %v want %v",
 			reading, tFine, tFineTarget)
 	}
+
 	if math.Abs(temperature-temperatureTarget) > 0.05 {
 		t.Errorf("temperatureCalibration.Compensate(%v) returned temperature %v want %v", reading, temperature, temperatureTarget)
 	}

@@ -83,7 +83,7 @@ func Reset(bus string, address uint16) (Calibrations, error) {
 		device.WriteRead([]byte{0x04}, swError[:]),
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Calibrations{}, fmt.Errorf("Could not reset chip: %v", err)
+		return Calibrations{}, fmt.Errorf("could not reset chip: %v", err)
 	}
 
 	var input calibrationInput
@@ -110,13 +110,13 @@ func Measure(bus string, address uint16, calibrations Calibrations) (Measurement
 		device.WriteRead([]byte{0x1d}, reading[:]),
 		func() error {
 			if reading[0]&0x80 == 0x00 {
-				return fmt.Errorf("Sensor was not ready on readout")
+				return fmt.Errorf("sensor was not ready on readout")
 			}
 			return nil
 		},
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Measurement{}, fmt.Errorf("Could not reset chip: %v", err)
+		return Measurement{}, fmt.Errorf("could not reset chip: %v", err)
 	}
 
 	pReading := uint32(reading[2])<<12 | uint32(reading[3])<<4 | uint32(reading[4])>>16

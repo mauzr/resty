@@ -17,9 +17,6 @@ limitations under the License.
 package sk6812
 
 import (
-	"log"
-	"os"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"go.eqrx.net/mauzr/pkg/program"
@@ -35,18 +32,19 @@ func SubCommand(p *program.Program) *cobra.Command {
 		Short: "Expose a SK6812 strip",
 		Long:  "Expose a SK6812 driver via REST",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return p.ApplyEnvsToFlags(&flags, [][2]string{{"tty", "RIWERS_TTY"}})
+			return p.ApplyEnvsToFlags(&flags, [][2]string{{"tty", "MAUZR_TTY"}})
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			logger := log.New(os.Stderr, "", 0)
 			strip := NewStrip(*tty)
-			p.Mux.Handle("/color", RESTHandler(logger, strip))
+			setupHandler(p.Mux, strip)
 			go strip.Manage(p.Ctx, p.Wg)
 		},
 	}
+
 	if err := cobra.MarkFlagFilename(&flags, "tty"); err != nil {
 		panic(err)
 	}
+
 	command.Flags().AddFlagSet(&flags)
 	return &command
 }

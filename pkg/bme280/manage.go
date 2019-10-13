@@ -19,7 +19,6 @@ package bme280
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 )
@@ -36,7 +35,7 @@ type manager struct {
 
 // Chip represents a BME680.
 type Chip interface {
-	Manage(ctx context.Context, wg *sync.WaitGroup, logger *log.Logger)
+	Manage(ctx context.Context, wg *sync.WaitGroup)
 	Measure(ctx context.Context, maxAge time.Duration) (Measurement, error)
 }
 
@@ -50,16 +49,16 @@ func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measuremen
 	for {
 		select {
 		case measurement, more := <-m.latestMeasurement:
-			if !more {
+			switch {
+			case !more:
 				return Measurement{}, fmt.Errorf("management routine canceled")
-			} else if time.Since(measurement.Time) < maxAge {
+			case time.Since(measurement.Time) < maxAge:
 				return measurement, nil
-			} else {
+			default:
 				select {
+				case m.requestedMeasurementAge <- maxAge:
 				case <-ctx.Done():
 					return Measurement{}, ctx.Err()
-				case m.requestedMeasurementAge <- maxAge:
-					continue
 				}
 			}
 		case <-ctx.Done():
@@ -68,13 +67,13 @@ func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measuremen
 	}
 }
 
-func (m *manager) reset(ctx context.Context, logger *log.Logger) {
+func (m *manager) reset(ctx context.Context) {
 	for {
 		if calibrations, err := Reset(m.bus, m.device); err == nil {
 			m.calibrations = calibrations
 			break
 		} else {
-			logger.Printf("Reset failed: %v\n", err)
+			fmt.Printf("Reset failed: %v\n", err)
 		}
 
 		select {
@@ -91,8 +90,9 @@ func (m *manager) reset(ctx context.Context, logger *log.Logger) {
 	}
 }
 
-func (m *manager) run(ctx context.Context, logger *log.Logger) {
+func (m *manager) run(ctx context.Context) {
 	var measurement Measurement
+
 	for {
 		select {
 		case maxAge := <-m.requestedMeasurementAge:
@@ -100,7 +100,7 @@ func (m *manager) run(ctx context.Context, logger *log.Logger) {
 				if newMeasurment, err := Measure(m.bus, m.device, m.calibrations); err == nil {
 					m.measurement = newMeasurment
 				} else {
-					logger.Printf("Measurement failed: %v\n", err)
+					fmt.Printf("Measurement failed: %v\n", err)
 					return
 				}
 			}
@@ -113,17 +113,18 @@ func (m *manager) run(ctx context.Context, logger *log.Logger) {
 }
 
 // Manage the chip.
-func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup, logger *log.Logger) {
+func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
 	defer close(m.latestMeasurement)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			m.reset(ctx, logger)
-			m.run(ctx, logger)
+			m.reset(ctx)
+			m.run(ctx)
 		}
 	}
 }

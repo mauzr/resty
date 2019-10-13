@@ -98,7 +98,7 @@ func (c PressureCalibration) Compensate(reading uint32, tFine float64) (pressure
 
 	if var1 != 0 {
 		pressure = (1048576.0 - float64(reading) - var2/4096.0) * 6250.0 / var1
-		pressure = pressure + (float64(c.P9)*math.Pow(pressure, 2)/2147483648.0+pressure*float64(c.P8)/32768.0+float64(c.P7))/16.0
+		pressure += (float64(c.P9)*math.Pow(pressure, 2)/2147483648.0 + pressure*float64(c.P8)/32768.0 + float64(c.P7)) / 16.0
 	}
 	pressure = math.Max(minimumPressure, math.Min(pressure, maximumPressure))
 	return

@@ -18,35 +18,55 @@ package rest
 
 import (
 	"context"
-	"crypto/tls"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
 
-// Serve creates a REST server secured by TLS with client cert authentication.
-func Serve(ctx context.Context, listen string, tlsConfig *tls.Config, mux *http.ServeMux) error {
-	server := http.Server{
-		Addr:              listen,
-		TLSConfig:         tlsConfig,
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		Handler:           mux,
-		// Disable HTTP v2.0 since that would require 128 bit ciphers.
-		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
-	}
+type Server struct {
+	http.Server
+}
 
+// Serve creates a REST server secured by TLS with client cert authentication.
+func (s *Server) Serve(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		httpCtx, httpCancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer httpCancel()
-		if err := server.Shutdown(httpCtx); err != nil {
+		if err := s.Shutdown(httpCtx); err != nil {
 			panic(err)
 		}
 	}()
 
-	err := server.ListenAndServeTLS("", "")
+	err := s.ListenAndServeTLS("", "")
 	if err == http.ErrServerClosed {
 		err = nil
 	}
 	return err
+}
+
+func NewServer(handler http.Handler, caPath, crtPath, keyPath, listen string) *Server {
+	config := TLSConfig(crtPath, keyPath)
+
+	server := Server{
+		http.Server{
+			Addr:              listen,
+			TLSConfig:         config,
+			ReadHeaderTimeout: 3 * time.Second,
+			IdleTimeout:       120 * time.Second,
+			Handler:           handler,
+		},
+	}
+
+	if pem, err := ioutil.ReadFile(caPath); err != nil {
+		panic(fmt.Errorf("failed to load CA file from %v: %v", caPath, err))
+	} else if !config.ClientCAs.AppendCertsFromPEM(pem) {
+		panic(fmt.Errorf("failed to parse CA file from %v", caPath))
+	}
+	return &server
+}
+
+func DefaultResponseHeader(header http.Header) {
+	header.Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 }

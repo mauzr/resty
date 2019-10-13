@@ -64,6 +64,7 @@ func (m MeasurementMock) WriteRead(source []byte, destination []byte) io.Action 
 // TestCalibrationReadout tests if the driver reads BME280 calibration data correctly.
 func TestCalibrationReadout(test *testing.T) {
 	i2c.NewDevice = func(bus string, address uint16) i2c.Device { return measureMock }
+
 	if cal, err := bme280.Reset("", 0); err == nil {
 		if cal != calibrationResult {
 			test.Errorf("Reset(\"\", 0) provides calibration %v, expected %v", cal, calibrationResult)
@@ -80,9 +81,8 @@ func setupMeasurementTesting() bme280.Measurement {
 		var m bme280.Measurement
 		if m, err = bme280.Measure("", 0, cal); nil == err {
 			return m
-		} else {
-			panic(err)
 		}
+		panic(err)
 	} else {
 		panic(err)
 	}

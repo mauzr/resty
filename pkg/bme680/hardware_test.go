@@ -84,13 +84,12 @@ func TestCalibrationReadout(test *testing.T) {
 
 func setupMeasurementTesting() bme680.Measurement {
 	i2c.NewDevice = func(bus string, address uint16) i2c.Device {
-		measureMock[0x1d] = measureMock[0x1d] | 0x80
+		measureMock[0x1d] |= 0x80
 		return measureMock
 	}
 
 	if cal, err := bme680.Reset("", 0); err == nil {
-		var m bme680.Measurement
-		if m, err = bme680.Measure("", 0, cal); err == nil {
+		if m, err := bme680.Measure("", 0, cal); err == nil {
 			return m
 		} else {
 			panic(err)

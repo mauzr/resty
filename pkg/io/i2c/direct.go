@@ -71,7 +71,7 @@ func (d *normalDevice) WriteRead(source []byte, destination []byte) io.Action {
 		}
 
 		if err := d.file.Ioctl(ioctlReadWriteOperation, uintptr(unsafe.Pointer(&msg)))(); err != nil {
-			return fmt.Errorf("Failed to write %v and read #%v to I2C address %v because \"%v\"", source, len(destination), d.address, err)
+			return fmt.Errorf("failed to write %v and read #%v to I2C address %v because \"%v\"", source, len(destination), d.address, err)
 		}
 		return nil
 	}
@@ -95,7 +95,7 @@ func (d *normalDevice) Write(source []byte) io.Action {
 		}
 
 		if err := d.file.Ioctl(ioctlReadWriteOperation, uintptr(unsafe.Pointer(&msg)))(); err != nil {
-			return fmt.Errorf("Failed to write %v to I2C address %v because \"%v\"", source, d.address, err)
+			return fmt.Errorf("failed to write %v to I2C address %v because \"%v\"", source, d.address, err)
 		}
 		return nil
 	}

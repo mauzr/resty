@@ -62,6 +62,7 @@ func (d *normalDevice) Exchange(mosi []byte, miso []byte) io.Action {
 	if len(mosi) != len(miso) {
 		panic(fmt.Sprintf("SPI MOSI and MISO arrays have different lengths (%v %v)/n", len(mosi), len(miso)))
 	}
+
 	arg := spiIoctlArg{
 		txBuf:   uint64(uintptr(unsafe.Pointer(&miso[0]))),
 		rxBuf:   uint64(uintptr(unsafe.Pointer(&mosi[0]))),
