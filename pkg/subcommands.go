@@ -25,6 +25,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/bme680"
 	"go.eqrx.net/mauzr/pkg/program"
 	"go.eqrx.net/mauzr/pkg/sk6812"
+	"go.eqrx.net/mauzr/pkg/tradfri"
 )
 
 func completeCmd(rootCmd *cobra.Command) *cobra.Command {
@@ -85,6 +86,7 @@ func SetupCommands(p *program.Program) {
 		bme280.SubCommand(p),
 		bme680.SubCommand(p),
 		sk6812.SubCommand(p),
+		tradfri.SubCommand(p),
 	}
 	for _, subCommand := range subCommands {
 		p.RootCommand.AddCommand(subCommand)
