@@ -1,0 +1,3 @@
+KERNEL=="i2c-1*", GROUP="mauzr"
+KERNEL=="ttyUSB*", GROUP="mauzr"
+KERNEL=="spidev*", GROUP="mauzr"
