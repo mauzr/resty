@@ -25,7 +25,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -74,7 +73,6 @@ func New() *Program {
 	hostname := flags.StringP("hostname", "n", "", "Name of this service that is used to bind and pick TLS certificates")
 
 	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
 
 	var program *Program
 
@@ -91,7 +89,7 @@ func New() *Program {
 			}
 			server := rest.NewServer(
 				mux,
-				"/etc/ssl/certs/mauzr-ca.crt",
+				fmt.Sprintf("/etc/ssl/certs/%s-ca.crt", *hostname),
 				fmt.Sprintf("/etc/ssl/certs/%s.crt", *hostname),
 				fmt.Sprintf("/etc/ssl/private/%s.key", *hostname),
 				fmt.Sprintf("%s:443", *hostname),

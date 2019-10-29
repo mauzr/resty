@@ -24,7 +24,7 @@ test:
 
 .PHONY: vet
 vet:
-	go vet ./...
+	golangci-lint run ./...
 
 .PHONY: download
 download:

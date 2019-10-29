@@ -79,7 +79,7 @@ func (c *light) apply(params dtls.PeerParams, group string) error {
 
 	response, err := coap.ParseMessage(rawResponse)
 	if err == nil && response.Code != coap.Changed {
-		err = fmt.Errorf("Unexpected CoAP code: %s", response.Code)
+		err = fmt.Errorf("unexpected CoAP code: %s", response.Code)
 	}
 
 	return err
