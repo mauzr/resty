@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	"net"
 )
 
 type Server struct {
@@ -39,9 +40,12 @@ func (s *Server) Serve(ctx context.Context) error {
 		}
 	}()
 
-	err := s.ListenAndServeTLS("", "")
-	if err == http.ErrServerClosed {
-		err = nil
+  listener, err := net.Listen("tcp6", s.Addr)
+	if err == nil {
+		err = s.ServeTLS(listener, "", "")
+		if err == http.ErrServerClosed {
+			err = nil
+		}
 	}
 	return err
 }
