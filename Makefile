@@ -29,3 +29,16 @@ vet:
 .PHONY: download
 download:
 	go mod download
+
+.PHONY: build-image
+build-image:
+	docker build -t docker.pkg.github.com/eqrx/mauzr/mauzr:latest -f build/Dockerfile .
+
+.PHONY: push-image
+push-image:
+	docker push docker.pkg.github.com/eqrx/mauzr/mauzr:latest
+
+.PHONY: fmt
+fmt:
+	gofmt -s -w .
+
