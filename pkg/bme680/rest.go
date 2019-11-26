@@ -28,26 +28,28 @@ import (
 // setupHandler creates a http.Handler that handles BME680 measurements.
 func setupHandler(mux *http.ServeMux, chip Chip, tags map[string]string) {
 	rest.Endpoint(mux, "/measurement", "", func(query *rest.Query) {
-		var maxAge time.Duration
-		if err := query.CollectArguments([]rest.Argument{rest.DurationArgument("maxAge", &maxAge, nil)}); err != nil {
-			measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, 3*time.Second)
-			defer measureCtxCancel()
-
-			if measurement, err := chip.Measure(measureCtx, maxAge); err != nil {
-				query.InternalError = err
-			} else {
-				reply := map[string]interface{}{
-					"temperature":    measurement.Temperature,
-					"pressure":       measurement.Pressure,
-					"humidity":       measurement.Humidity,
-					"gas_resistance": measurement.GasResistance,
-					"timestamp":      measurement.Time.Unix(),
-				}
-				for k, v := range tags {
-					reply[k] = v
-				}
-				query.Body, query.InternalError = json.Marshal(reply)
+		args := struct {
+			MaxAge time.Duration `json:"maxAge,string"`
+		}{}
+		if err := query.UnmarshalArguments(&args); err != nil {
+			return
+		}
+		measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, 3*time.Second)
+		defer measureCtxCancel()
+		if measurement, err := chip.Measure(measureCtx, args.MaxAge); err != nil {
+			query.InternalError = err
+		} else {
+			reply := map[string]interface{}{
+				"temperature":    measurement.Temperature,
+				"pressure":       measurement.Pressure,
+				"humidity":       measurement.Humidity,
+				"gas_resistance": measurement.GasResistance,
+				"timestamp":      measurement.Time.Unix(),
 			}
+			for k, v := range tags {
+				reply[k] = v
+			}
+			query.Body, query.InternalError = json.Marshal(reply)
 		}
 	})
 }

@@ -21,51 +21,87 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"time"
-	"net"
 )
 
-type Server struct {
+type server struct {
 	http.Server
+	errChan chan error
 }
 
-// Serve creates a REST server secured by TLS with client cert authentication.
-func (s *Server) Serve(ctx context.Context) error {
-	go func() {
-		<-ctx.Done()
-		httpCtx, httpCancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer httpCancel()
-		if err := s.Shutdown(httpCtx); err != nil {
-			panic(err)
-		}
-	}()
+func (s *server) Run() {
+	err := s.ListenAndServeTLS("", "")
+	if err != http.ErrServerClosed {
+		s.errChan <- err
+	}
+	close(s.errChan)
+}
 
-  listener, err := net.Listen("tcp6", s.Addr)
-	if err == nil {
-		err = s.ServeTLS(listener, "", "")
-		if err == http.ErrServerClosed {
-			err = nil
+func ServeAll(ctx context.Context, handler http.Handler, caPath, crtPath, keyPath string, listenAddresses []string) error {
+	if len(listenAddresses) == 0 {
+		return fmt.Errorf("no listeners specified")
+	}
+	servers := make([]*server, len(listenAddresses))
+	cases := make([]reflect.SelectCase, len(listenAddresses)+1)
+	for i, address := range listenAddresses {
+		servers[i] = newServer(handler, caPath, crtPath, keyPath, address)
+		cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(servers[i].errChan)}
+		go servers[i].Run()
+	}
+	cases[len(listenAddresses)] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(ctx.Done())}
+
+	errors := []error{}
+	index, value, _ := reflect.Select(cases)
+	if index != len(listenAddresses) {
+		errors = append(errors, value.Interface().(error))
+	}
+
+	for _, server := range servers {
+		httpCtx, httpCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		if err := server.Shutdown(httpCtx); err != nil {
+			errors = append(errors, err)
+		}
+		httpCancel()
+	}
+
+	for _, server := range servers {
+		for {
+			err, ok := <-server.errChan
+			if !ok {
+				break
+			}
+			if err != nil {
+				errors = append(errors, err)
+			}
 		}
 	}
-	return err
+
+	switch len(errors) {
+	case 0:
+		return nil
+	case 1:
+		return errors[0]
+	default:
+		return fmt.Errorf("multiple webservers failed :%v", errors)
+	}
 }
 
-func NewServer(handler http.Handler, caPath, crtPath, keyPath, listen string) *Server {
-	config := TLSConfig(crtPath, keyPath)
-
-	server := Server{
+func newServer(handler http.Handler, caPath, crtPath, keyPath string, listenAddress string) *server {
+	server := server{
 		http.Server{
-			Addr:              listen,
-			TLSConfig:         config,
+			Addr:              listenAddress,
+			TLSConfig:         TLSConfig(crtPath, keyPath),
 			ReadHeaderTimeout: 3 * time.Second,
 			IdleTimeout:       120 * time.Second,
 			Handler:           handler,
 		},
+		make(chan error),
 	}
 
 	if pem, err := ioutil.ReadFile(caPath); err != nil {
 		panic(fmt.Errorf("failed to load CA file from %v: %v", caPath, err))
-	} else if !config.ClientCAs.AppendCertsFromPEM(pem) {
+	} else if !server.TLSConfig.ClientCAs.AppendCertsFromPEM(pem) {
 		panic(fmt.Errorf("failed to parse CA file from %v", caPath))
 	}
 	return &server

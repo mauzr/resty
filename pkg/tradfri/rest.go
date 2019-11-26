@@ -17,7 +17,6 @@ limitations under the License.
 package tradfri
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/bocajim/dtls"
@@ -33,8 +32,8 @@ const (
 </head>
 <body>
 	<form method="get">
-    <input type="radio" name="power" value="0" checked> Off<br>
-    <input type="radio" name="power" value="1"> On<br>
+    <input type="radio" name="power" value="false" checked> Off<br>
+    <input type="radio" name="power" value="true"> On<br>
 		<input type="submit" value="Submit">
 	</form>
 </body>
@@ -44,24 +43,21 @@ const (
 
 func setupMapping(mux *http.ServeMux, name, group string, params dtls.PeerParams) {
 	rest.Endpoint(mux, "/"+name, form, func(query *rest.Query) {
-		var level float64
-		var power, powerSet, levelSet bool
+		args := struct {
+			Power *bool    `json:"power,string"`
+			Level *float64 `json:"level,string"`
+		}{}
 
-		arguments := []rest.Argument{
-			rest.BoolArgument("power", &power, &powerSet),
-			rest.FloatArgument("level", &level, &levelSet),
+		if err := query.UnmarshalArguments(&args); err != nil {
+			return
 		}
-
-		if query.QueryError = query.CollectArguments(arguments); query.QueryError == nil {
-			fmt.Println(query.QueryError, powerSet, power)
-			change := light{}
-			if powerSet {
-				change.setPower(power)
-			}
-			if levelSet {
-				change.setLevel(level)
-			}
-			query.InternalError = change.apply(params, group)
+		change := light{}
+		if args.Power != nil {
+			change.setPower(*args.Power)
 		}
+		if args.Level != nil {
+			change.setLevel(*args.Level)
+		}
+		query.InternalError = change.apply(params, group)
 	})
 }

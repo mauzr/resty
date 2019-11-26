@@ -31,8 +31,8 @@ type Query struct {
 	URL                                     url.URL
 }
 
-func (r *Query) CollectArguments(arguments []Argument) error {
-	r.QueryError = CollectArguments(r.URL, arguments)
+func (r *Query) UnmarshalArguments(target interface{}) error {
+	r.QueryError = UnmarshalArguments(r.URL.Query(), target)
 	return r.QueryError
 }
 

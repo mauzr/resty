@@ -40,6 +40,12 @@ func SubCommand(p *program.Program) *cobra.Command {
 			})
 		},
 		Run: func(cmd *cobra.Command, args []string) {
+			if *client == "" {
+				panic("Client ID must be set")
+			}
+			if *psk == "" {
+				panic("PSK must be set")
+			}
 			setupKeys(*client, *psk)
 			params := setupParams(*client, *gateway)
 			for name, group := range *mapping {

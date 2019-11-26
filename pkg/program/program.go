@@ -40,7 +40,6 @@ type Program struct {
 	Mux         *http.ServeMux
 }
 
-// ApplyEnvsToFlags maps given environment variable names and maps them to flags.
 func (p *Program) ApplyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string) error {
 	for _, envToFlag := range envsToFlags {
 		flag, env := envToFlag[0], envToFlag[1]
@@ -53,8 +52,7 @@ func (p *Program) ApplyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string
 	return nil
 }
 
-// HandleTerminationSignals executes the given cancel function when a shutdown signal is received.
-func (p *Program) HandleTerminationSignals() {
+func (p *Program) handleTerminationSignals() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGTERM)
 	signal.Notify(c, syscall.SIGINT)
@@ -69,8 +67,9 @@ func New() *Program {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	flags := pflag.FlagSet{}
-	flags.StringToStringP("tags", "t", nil, "Tags to include in measurements")
-	hostname := flags.StringP("hostname", "n", "", "Name of this service that is used to bind and pick TLS certificates")
+	flags.StringToStringP("tags", "", nil, "Tags to include in measurements")
+	binds := flags.StringSliceP("binds", "", nil, "Addresses to listen on")
+	hostname := flags.StringP("hostname", "", "", "Name of this service that is used to bind and pick TLS certificates")
 
 	mux := http.NewServeMux()
 
@@ -81,20 +80,29 @@ func New() *Program {
 		Short:        "Expose devices to the network",
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return program.ApplyEnvsToFlags(&flags, [][2]string{{"tags", "MAUZR_TAGS"}, {"hostname", "MAUZR_HOSTNAME"}})
+			return program.ApplyEnvsToFlags(&flags, [][2]string{
+				{"tags", "MAUZR_TAGS"},
+				{"hostname", "MAUZR_HOSTNAME"},
+				{"binds", "MAUZR_BINDS"},
+			})
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			defer cancel()
 			if cmd.Name() == "help" {
 				return nil
 			}
-			server := rest.NewServer(
+			if *binds == nil {
+				*binds = []string{fmt.Sprintf("%s:443", *hostname)}
+			}
+			err := rest.ServeAll(
+				ctx,
 				mux,
 				fmt.Sprintf("/etc/ssl/certs/%s-ca.crt", *hostname),
 				fmt.Sprintf("/etc/ssl/certs/%s.crt", *hostname),
 				fmt.Sprintf("/etc/ssl/private/%s.key", *hostname),
-				fmt.Sprintf("%s:443", *hostname),
+				*binds,
 			)
-			return server.Serve(ctx)
+			return err
 		},
 	}
 	rootCommand.PersistentFlags().AddFlagSet(&flags)
@@ -107,6 +115,6 @@ func New() *Program {
 		hostname,
 		mux,
 	}
-	go program.HandleTerminationSignals()
+	go program.handleTerminationSignals()
 	return program
 }
