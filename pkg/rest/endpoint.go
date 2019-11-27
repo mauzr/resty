@@ -26,7 +26,7 @@ import (
 type Query struct {
 	QueryError, InternalError, GatewayError error
 	Status                                  int
-	Body                                    []byte
+	ResponseBody                            []byte
 	Ctx                                     context.Context
 	URL                                     url.URL
 }
@@ -59,9 +59,9 @@ func Endpoint(mux *http.ServeMux, path, form string, queryHandler func(query *Qu
 				http.Error(w, response.GatewayError.Error(), http.StatusBadGateway)
 			case response.InternalError != nil:
 				http.Error(w, response.InternalError.Error(), http.StatusInternalServerError)
-			case response.Body != nil:
+			case response.ResponseBody != nil:
 				w.WriteHeader(response.Status)
-				_, _ = w.Write(response.Body)
+				_, _ = w.Write(response.ResponseBody)
 			default:
 				http.Redirect(w, r, r.URL.Scheme+r.URL.Host+r.URL.Path, http.StatusSeeOther)
 			}

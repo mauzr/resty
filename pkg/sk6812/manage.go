@@ -87,8 +87,8 @@ func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 					case <-ctx.Done():
 						return nil
 					case request := <-m.requests:
-						channels, valid := <-request.channels
-						if !valid {
+						channels, ok := <-request.channels
+						if !ok {
 							continue
 						}
 						err := m.sendChannels(channels)()

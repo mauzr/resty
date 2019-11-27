@@ -24,21 +24,26 @@ import (
 	"net/http"
 )
 
-type Client struct {
+type Client interface {
+	Get(context.Context, string, interface{}) error
+	Post(context.Context, string, io.Reader) error
+}
+
+type client struct {
 	http.Client
 }
 
 func NewClient(crtPath, keyPath string) Client {
 	config := TLSConfig(crtPath, keyPath)
-	client := Client{
+	client := client{
 		http.Client{
 			Transport: &http.Transport{TLSClientConfig: config},
 		},
 	}
-	return client
+	return &client
 }
 
-func (c *Client) GetWithContext(ctx context.Context, url string, body interface{}) error {
+func (c *client) Get(ctx context.Context, url string, body interface{}) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err == nil {
 		var response *http.Response
@@ -60,7 +65,7 @@ func (c *Client) GetWithContext(ctx context.Context, url string, body interface{
 	return err
 }
 
-func (c *Client) PostWithContext(ctx context.Context, url string, body io.Reader) error {
+func (c *client) Post(ctx context.Context, url string, body io.Reader) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err == nil {
 		var response *http.Response

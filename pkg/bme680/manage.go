@@ -48,9 +48,9 @@ func NewChip(bus string, device uint16) Chip {
 func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
 	for {
 		select {
-		case measurement, more := <-m.latestMeasurement:
+		case measurement, ok := <-m.latestMeasurement:
 			switch {
-			case !more:
+			case !ok:
 				return Measurement{}, fmt.Errorf("management routine canceled")
 			case time.Since(measurement.Time) < maxAge:
 				return measurement, nil
