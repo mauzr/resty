@@ -52,7 +52,7 @@ func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measuremen
 			switch {
 			case !ok:
 				return Measurement{}, fmt.Errorf("management routine canceled")
-			case time.Since(measurement.Time) < maxAge:
+			case time.Since(measurement.Timestamp) < maxAge:
 				return measurement, nil
 			default:
 				select {
@@ -96,7 +96,7 @@ func (m *manager) run(ctx context.Context) {
 	for {
 		select {
 		case maxAge := <-m.requestedMeasurementAge:
-			if time.Since(measurement.Time) >= maxAge {
+			if time.Since(measurement.Timestamp) >= maxAge {
 				if newMeasurment, err := Measure(m.bus, m.device, m.calibrations); err == nil {
 					m.measurement = newMeasurment
 				} else {

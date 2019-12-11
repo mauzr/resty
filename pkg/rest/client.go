@@ -27,14 +27,18 @@ import (
 type Client interface {
 	Get(context.Context, string, interface{}) error
 	Post(context.Context, string, io.Reader) error
+	Do(*http.Request) (*http.Response, error)
 }
 
 type client struct {
 	http.Client
 }
 
-func NewClient(crtPath, keyPath string) Client {
-	config := TLSConfig(crtPath, keyPath)
+func NewClient(hostname string) Client {
+	config := TLSConfig(
+		"/etc/ssl/certs/"+hostname+"-client.crt",
+		"/etc/ssl/private/"+hostname+"-client.key",
+	)
 	client := client{
 		http.Client{
 			Transport: &http.Transport{TLSClientConfig: config},

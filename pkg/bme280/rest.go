@@ -40,16 +40,8 @@ func setupHandler(mux *http.ServeMux, chip Chip, tags map[string]string) {
 		if measurement, err := chip.Measure(measureCtx, args.MaxAge); err != nil {
 			query.InternalError = err
 		} else {
-			reply := map[string]interface{}{
-				"temperature": measurement.Temperature,
-				"pressure":    measurement.Pressure,
-				"humidity":    measurement.Humidity,
-				"timestamp":   measurement.Time.Unix(),
-			}
-			for k, v := range tags {
-				reply[k] = v
-			}
-			query.Body, query.InternalError = json.Marshal(reply)
+			measurement.Tags = tags
+			query.ResponseBody, query.InternalError = json.Marshal(measurement)
 		}
 	})
 }

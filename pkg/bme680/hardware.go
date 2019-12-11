@@ -26,15 +26,6 @@ import (
 	"go.eqrx.net/mauzr/pkg/io/i2c"
 )
 
-// Measurement contains the compensated measurements of a BME680 and its timestamp.
-type Measurement struct {
-	Temperature   float64
-	Humidity      float64
-	Pressure      float64
-	GasResistance float64
-	Time          time.Time
-}
-
 // calibrationInput contains variables that will be read out of the BME680 registers.
 // See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME680-DS001.pdf for details.
 type calibrationInput struct {
@@ -125,7 +116,6 @@ func Measure(bus string, address uint16, calibrations Calibrations) (Measurement
 	gresReading := uint16(reading[13])<<2 | uint16(reading[14])>>6
 	granReading := reading[14] & 0x0f
 
-	m := Measurement{Time: time.Now()}
-	m.GasResistance, m.Humidity, m.Pressure, m.Temperature = calibrations.Compensate(gresReading, granReading, hReading, pReading, tReading)
-	return m, nil
+	gasResistance, humidity, pressure, temperature := calibrations.Compensate(gresReading, granReading, hReading, pReading, tReading)
+	return Measurement{gasResistance, humidity, pressure, temperature, time.Now(), nil}, nil
 }
