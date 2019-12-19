@@ -14,38 +14,60 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package bme280
+package bme
 
 import (
 	"context"
 	"fmt"
 	"sync"
 	"time"
+
+	"go.eqrx.net/mauzr/pkg/bme/bme280"
+	"go.eqrx.net/mauzr/pkg/bme/bme680"
+	"go.eqrx.net/mauzr/pkg/bme/common"
 )
 
-// Manager manages all functions of a chip
-type manager struct {
+type Measurement = common.Measurement
+
+type Model interface {
+	Measure(bus string, device uint16) (Measurement, error)
+	Reset(bus string, device uint16) error
+}
+
+// manager manages all functions of a chip
+type Manager struct {
+	model                   Model
 	bus                     string
 	device                  uint16
-	calibrations            Calibrations
 	measurement             Measurement
 	latestMeasurement       chan Measurement
 	requestedMeasurementAge chan time.Duration
 }
 
-// Chip represents a BME680.
-type Chip interface {
-	Manage(ctx context.Context, wg *sync.WaitGroup)
-	Measure(ctx context.Context, maxAge time.Duration) (Measurement, error)
+func NewBME280Manager(bus string, address uint16) Manager {
+	return Manager{
+		bme280.NewModel(),
+		bus,
+		address,
+		Measurement{},
+		make(chan Measurement),
+		make(chan time.Duration),
+	}
 }
 
-// NewChip creates a new BME680 representation.
-func NewChip(bus string, device uint16) Chip {
-	return &manager{bus, device, Calibrations{}, Measurement{}, make(chan Measurement), make(chan time.Duration)}
+func NewBME680Manager(bus string, address uint16) Manager {
+	return Manager{
+		bme680.NewModel(),
+		bus,
+		address,
+		Measurement{},
+		make(chan Measurement),
+		make(chan time.Duration),
+	}
 }
 
 // Measure the current air state.
-func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
+func (m *Manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
 	for {
 		select {
 		case measurement, ok := <-m.latestMeasurement:
@@ -56,9 +78,10 @@ func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measuremen
 				return measurement, nil
 			default:
 				select {
-				case m.requestedMeasurementAge <- maxAge:
 				case <-ctx.Done():
 					return Measurement{}, ctx.Err()
+				case m.requestedMeasurementAge <- maxAge:
+					continue
 				}
 			}
 		case <-ctx.Done():
@@ -67,10 +90,9 @@ func (m *manager) Measure(ctx context.Context, maxAge time.Duration) (Measuremen
 	}
 }
 
-func (m *manager) reset(ctx context.Context) {
+func (m *Manager) reset(ctx context.Context) {
 	for {
-		if calibrations, err := Reset(m.bus, m.device); err == nil {
-			m.calibrations = calibrations
+		if err := m.model.Reset(m.bus, m.device); err == nil {
 			break
 		} else {
 			fmt.Printf("Reset failed: %v\n", err)
@@ -90,14 +112,14 @@ func (m *manager) reset(ctx context.Context) {
 	}
 }
 
-func (m *manager) run(ctx context.Context) {
+func (m *Manager) run(ctx context.Context) {
 	var measurement Measurement
 
 	for {
 		select {
 		case maxAge := <-m.requestedMeasurementAge:
 			if time.Since(measurement.Timestamp) >= maxAge {
-				if newMeasurment, err := Measure(m.bus, m.device, m.calibrations); err == nil {
+				if newMeasurment, err := m.model.Measure(m.bus, m.device); err == nil {
 					m.measurement = newMeasurment
 				} else {
 					fmt.Printf("Measurement failed: %v\n", err)
@@ -113,11 +135,10 @@ func (m *manager) run(ctx context.Context) {
 }
 
 // Manage the chip.
-func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
+func (m *Manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
 	defer close(m.latestMeasurement)
-
 	for {
 		select {
 		case <-ctx.Done():

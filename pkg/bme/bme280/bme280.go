@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.eqrx.net/mauzr/pkg/bme/common"
 	"go.eqrx.net/mauzr/pkg/io"
 	"go.eqrx.net/mauzr/pkg/io/i2c"
 )
@@ -51,8 +52,20 @@ type calibrationInput struct {
 	H6     int8
 }
 
+type Model struct {
+	calibrations Calibrations
+}
+
+func NewModel() *Model {
+	return &Model{}
+}
+
+func (m *Model) Calibrations() Calibrations {
+	return m.calibrations
+}
+
 // Reset resets the BME280 behind the given address and fetches the calibration.
-func Reset(bus string, address uint16) (Calibrations, error) {
+func (m *Model) Reset(bus string, address uint16) error {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf on how this works
 	device := i2c.NewDevice(bus, address)
 	var data [36]byte
@@ -64,22 +77,23 @@ func Reset(bus string, address uint16) (Calibrations, error) {
 		device.WriteRead([]byte{0xe1}, data[26:35]),
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Calibrations{}, fmt.Errorf("could not reset chip: %v", err)
+		return fmt.Errorf("could not reset chip: %v", err)
 	}
 
 	var i calibrationInput
 	if err := binary.Read(bytes.NewReader(data[:]), binary.LittleEndian, &i); err != nil {
 		panic(err)
 	}
-	return Calibrations{
+	m.calibrations = Calibrations{
 		HumidityCalibration{i.H1, i.H2, i.H3, int16(i.Left)<<4 | int16(i.Middle&0xf), int16(i.Right<<4) | int16((i.Middle>>4)&0xf), i.H6},
 		PressureCalibration{i.P1, i.P2, i.P3, i.P4, i.P5, i.P6, i.P7, i.P8, i.P9},
 		TemperatureCalibration{i.T1, i.T2, i.T3},
-	}, nil
+	}
+	return nil
 }
 
 // Measure creates a measurement with the given BME280 behind the given address.
-func Measure(bus string, address uint16, calibrations Calibrations) (Measurement, error) {
+func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) {
 	device := i2c.NewDevice(bus, address)
 	var reading [8]byte
 	actions := []io.Action{
@@ -90,14 +104,19 @@ func Measure(bus string, address uint16, calibrations Calibrations) (Measurement
 		device.WriteRead([]byte{0xf7}, reading[:]),
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Measurement{}, fmt.Errorf("could not read measurement from chip: %v", err)
+		return common.Measurement{}, fmt.Errorf("could not read measurement from chip: %v", err)
 	}
 
 	pReading := (uint32(reading[0])<<16 | uint32(reading[1])<<8 | uint32(reading[2])) >> 4
 	tReading := (uint32(reading[3])<<16 | uint32(reading[4])<<8 | uint32(reading[5])) >> 4
 	hReading := uint32(reading[6])<<8 | uint32(reading[7])
 
-	humidity, pressure, temperature := calibrations.Compensate(hReading, pReading, tReading)
-
-	return Measurement{humidity, pressure, temperature, time.Now(), nil}, nil
+	humidity, pressure, temperature := m.calibrations.Compensate(hReading, pReading, tReading)
+	measurement := common.Measurement{
+		Humidity:    humidity,
+		Pressure:    pressure,
+		Temperature: temperature,
+		Timestamp:   time.Now(),
+	}
+	return measurement, nil
 }

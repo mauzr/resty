@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.eqrx.net/mauzr/pkg/bme/common"
 	"go.eqrx.net/mauzr/pkg/io"
 	"go.eqrx.net/mauzr/pkg/io/i2c"
 )
@@ -60,8 +61,20 @@ type calibrationInput struct {
 	G3     int8
 }
 
+type Model struct {
+	calibrations Calibrations
+}
+
+func NewModel() *Model {
+	return &Model{}
+}
+
+func (m *Model) Calibrations() Calibrations {
+	return m.calibrations
+}
+
 // Reset resets the BME680 behind the given address and fetches the calibration.
-func Reset(bus string, address uint16) (Calibrations, error) {
+func (m *Model) Reset(bus string, address uint16) error {
 	device := i2c.NewDevice(bus, address)
 	var data [42]byte
 	var swError [1]byte
@@ -74,23 +87,24 @@ func Reset(bus string, address uint16) (Calibrations, error) {
 		device.WriteRead([]byte{0x04}, swError[:]),
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Calibrations{}, fmt.Errorf("could not reset chip: %v", err)
+		return fmt.Errorf("could not reset chip: %v", err)
 	}
 
 	var input calibrationInput
 	if err := binary.Read(bytes.NewReader(data[:]), binary.LittleEndian, &input); err != nil {
 		panic(err)
 	}
-	c := Calibrations{}
-	c.Gas = GasCalibration{input.G1, input.G2, input.G3, swError[0] / 16}
-	c.Temperature = TemperatureCalibration{input.T1, input.T2, input.T3}
-	c.Pressure = PressureCalibration{input.P1, input.P2, input.P3, input.P4, input.P5, input.P6, input.P7, input.P8, input.P9, input.P10}
-	c.Humidity = HumidityCalibration{uint16(input.H1)<<4 | (uint16(input.MIDDLE) & 0xf), uint16(input.H2)<<4 | uint16(input.MIDDLE)>>4, input.H3, input.H4, input.H5, input.H6, input.H7}
-	return c, nil
+	m.calibrations = Calibrations{
+		GasCalibration{input.G1, input.G2, input.G3, swError[0] / 16},
+		HumidityCalibration{uint16(input.H1)<<4 | (uint16(input.MIDDLE) & 0xf), uint16(input.H2)<<4 | uint16(input.MIDDLE)>>4, input.H3, input.H4, input.H5, input.H6, input.H7},
+		PressureCalibration{input.P1, input.P2, input.P3, input.P4, input.P5, input.P6, input.P7, input.P8, input.P9, input.P10},
+		TemperatureCalibration{input.T1, input.T2, input.T3},
+	}
+	return nil
 }
 
 // Measure creates a measurement with the given BME680 behind the given address.
-func Measure(bus string, address uint16, calibrations Calibrations) (Measurement, error) {
+func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) {
 	device := i2c.NewDevice(bus, address)
 	var reading [15]byte
 	actions := []io.Action{
@@ -107,7 +121,7 @@ func Measure(bus string, address uint16, calibrations Calibrations) (Measurement
 		},
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return Measurement{}, fmt.Errorf("could not reset chip: %v", err)
+		return common.Measurement{}, fmt.Errorf("could not reset chip: %v", err)
 	}
 
 	pReading := uint32(reading[2])<<12 | uint32(reading[3])<<4 | uint32(reading[4])>>16
@@ -116,6 +130,13 @@ func Measure(bus string, address uint16, calibrations Calibrations) (Measurement
 	gresReading := uint16(reading[13])<<2 | uint16(reading[14])>>6
 	granReading := reading[14] & 0x0f
 
-	gasResistance, humidity, pressure, temperature := calibrations.Compensate(gresReading, granReading, hReading, pReading, tReading)
-	return Measurement{gasResistance, humidity, pressure, temperature, time.Now(), nil}, nil
+	gasResistance, humidity, pressure, temperature := m.calibrations.Compensate(gresReading, granReading, hReading, pReading, tReading)
+	measurement := common.Measurement{
+		GasResistance: gasResistance,
+		Humidity:      humidity,
+		Pressure:      pressure,
+		Temperature:   temperature,
+		Timestamp:     time.Now(),
+	}
+	return measurement, nil
 }

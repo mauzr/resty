@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package bme680
+package bme
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 )
 
 // setupHandler creates a http.Handler that handles BME680 measurements.
-func setupHandler(mux *http.ServeMux, chip Chip, tags map[string]string) {
+func setupHandler(mux *http.ServeMux, manager Manager, tags map[string]string) {
 	rest.Endpoint(mux, "/measurement", "", func(query *rest.Query) {
 		args := struct {
 			MaxAge time.Duration `json:"maxAge,string"`
@@ -36,7 +36,7 @@ func setupHandler(mux *http.ServeMux, chip Chip, tags map[string]string) {
 		}
 		measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, 3*time.Second)
 		defer measureCtxCancel()
-		if measurement, err := chip.Measure(measureCtx, args.MaxAge); err != nil {
+		if measurement, err := manager.Measure(measureCtx, args.MaxAge); err != nil {
 			query.InternalError = err
 		} else {
 			measurement.Tags = tags

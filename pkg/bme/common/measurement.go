@@ -14,17 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package bme280
+package common
 
 import (
 	"time"
 )
 
-// Measurement contains the compensated measurements of a BME280 and its timestamp.
+// Measurement contains the compensated measurements of a BME680 and its timestamp.
 type Measurement struct {
-	Humidity    float64           `json:"humidity"`
-	Pressure    float64           `json:"pressure"`
-	Temperature float64           `json:"temperature"`
-	Timestamp   time.Time         `json:"timestamp"`
-	Tags        map[string]string `json:"tags"`
+	GasResistance float64           `json:"gas_resistance"`
+	Humidity      float64           `json:"humidity"`
+	Pressure      float64           `json:"pressure"`
+	Temperature   float64           `json:"temperature"`
+	Timestamp     time.Time         `json:"timestamp"`
+	Tags          map[string]string `json:"tags"`
 }

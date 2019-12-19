@@ -21,7 +21,8 @@ import (
 	"math"
 	"testing"
 
-	"go.eqrx.net/mauzr/pkg/bme280"
+	"go.eqrx.net/mauzr/pkg/bme/bme280"
+	"go.eqrx.net/mauzr/pkg/bme/common"
 	"go.eqrx.net/mauzr/pkg/io"
 	"go.eqrx.net/mauzr/pkg/io/i2c"
 )
@@ -34,7 +35,7 @@ var calibrationResult = bme280.Calibrations{
 	bme280.PressureCalibration{36343, -10930, 3024, 7386, 103, -7, 9900, -10230, 4285},
 	bme280.TemperatureCalibration{27603, 25947, 50},
 }
-var measurementResult = bme280.Measurement{Humidity: 60.5, Pressure: 100651.0, Temperature: 21.9}
+var measurementResult = common.Measurement{Humidity: 60.5, Pressure: 100651.0, Temperature: 21.9}
 var measureMock = MeasurementMock{
 	0x8e, 0x6f, 0x89, 0x4f, 0xab, 0x52, 0xc9, 0x06, 0xd3, 0x6b, 0x5b, 0x65, 0x32, 0x00, 0xf7, 0x8d,
 	0x4e, 0xd5, 0xd0, 0x0b, 0xda, 0x1c, 0x67, 0x00, 0xf9, 0xff, 0xac, 0x26, 0x0a, 0xd8, 0xbd, 0x10,
@@ -65,7 +66,10 @@ func (m MeasurementMock) WriteRead(source []byte, destination []byte) io.Action 
 func TestCalibrationReadout(test *testing.T) {
 	i2c.NewDevice = func(bus string, address uint16) i2c.Device { return measureMock }
 
-	if cal, err := bme280.Reset("", 0); err == nil {
+	model := bme280.NewModel()
+
+	if err := model.Reset("", 0); err == nil {
+		cal := model.Calibrations()
 		if cal != calibrationResult {
 			test.Errorf("Reset(\"\", 0) provides calibration %v, expected %v", cal, calibrationResult)
 		}
@@ -74,12 +78,14 @@ func TestCalibrationReadout(test *testing.T) {
 	}
 }
 
-func setupMeasurementTesting() bme280.Measurement {
+func setupMeasurementTesting() common.Measurement {
 	i2c.NewDevice = func(bus string, address uint16) i2c.Device { return measureMock }
 
-	if cal, err := bme280.Reset("", 0); err == nil {
-		var m bme280.Measurement
-		if m, err = bme280.Measure("", 0, cal); nil == err {
+	model := bme280.NewModel()
+
+	if err := model.Reset("", 0); err == nil {
+		var m common.Measurement
+		if m, err = model.Measure("", 0); nil == err {
 			return m
 		}
 		panic(err)

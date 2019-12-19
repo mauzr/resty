@@ -20,7 +20,7 @@ import (
 	"math"
 	"testing"
 
-	"go.eqrx.net/mauzr/pkg/bme280"
+	"go.eqrx.net/mauzr/pkg/bme/bme280"
 )
 
 // TestTemperatureCompensation tests the BME280 temperature compensation isolated.

@@ -21,7 +21,8 @@ import (
 	"math"
 	"testing"
 
-	"go.eqrx.net/mauzr/pkg/bme680"
+	"go.eqrx.net/mauzr/pkg/bme/bme680"
+	"go.eqrx.net/mauzr/pkg/bme/common"
 	"go.eqrx.net/mauzr/pkg/io"
 	"go.eqrx.net/mauzr/pkg/io/i2c"
 )
@@ -35,7 +36,7 @@ var calibrationResult = bme680.Calibrations{
 	bme680.PressureCalibration{34731, -10373, 88, 4083, 121, 30, 12, 1014, -4096, 30},
 	bme680.TemperatureCalibration{26511, 26148, 3},
 }
-var measurementResult = bme680.Measurement{GasResistance: 2898707, Humidity: 63, Pressure: 101304.8, Temperature: 25.4}
+var measurementResult = common.Measurement{GasResistance: 2898707, Humidity: 63, Pressure: 101304.8, Temperature: 25.4}
 var measureMock = MeasurementMock{
 	0x2d, 0xaa, 0x16, 0x4b, 0x13, 0x02, 0x54, 0x99, 0x00, 0x00, 0x01, 0x00, 0x02, 0x04, 0x02, 0xc8,
 	0x10, 0x00, 0x40, 0x00, 0x80, 0x00, 0x20, 0x00, 0x1f, 0x7f, 0x1f, 0x10, 0x00, 0x00, 0x00, 0x66,
@@ -73,7 +74,9 @@ func (m MeasurementMock) WriteRead(source []byte, destination []byte) io.Action 
 // TestCalibrationReadout tests if the driver reads BME680 calibration data correctly.
 func TestCalibrationReadout(test *testing.T) {
 	i2c.NewDevice = func(bus string, address uint16) i2c.Device { return measureMock }
-	if cal, err := bme680.Reset("", 0); err == nil {
+	model := bme680.NewModel()
+	if err := model.Reset("", 0); err == nil {
+		cal := model.Calibrations()
 		if cal != calibrationResult {
 			test.Errorf("Reset(\"\", 0) provides calibration %v, expected %v", cal, calibrationResult)
 		}
@@ -82,14 +85,15 @@ func TestCalibrationReadout(test *testing.T) {
 	}
 }
 
-func setupMeasurementTesting() bme680.Measurement {
+func setupMeasurementTesting() common.Measurement {
 	i2c.NewDevice = func(bus string, address uint16) i2c.Device {
 		measureMock[0x1d] |= 0x80
 		return measureMock
 	}
+	model := bme680.NewModel()
 
-	if cal, err := bme680.Reset("", 0); err == nil {
-		if m, err := bme680.Measure("", 0, cal); err == nil {
+	if err := model.Reset("", 0); err == nil {
+		if m, err := model.Measure("", 0); err == nil {
 			return m
 		} else {
 			panic(err)
