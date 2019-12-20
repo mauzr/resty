@@ -43,6 +43,10 @@ func newNormalPin(identifier string) Pin {
 	}
 }
 
+func (p *normalPin) Identifier() string {
+	return p.identifier
+}
+
 // Export a pin
 func (p *normalPin) Export() func() error {
 	return func() error {

@@ -19,19 +19,18 @@ package bme
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"time"
 
-	"go.eqrx.net/mauzr/pkg/rest"
+	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
 // setupHandler creates a http.Handler that handles BME680 measurements.
-func setupHandler(mux *http.ServeMux, manager Manager, tags map[string]string) {
-	rest.Endpoint(mux, "/measurement", "", func(query *rest.Query) {
+func setupHandler(c rest.REST, manager Manager, tags map[string]string) {
+	c.Endpoint("/measurement", "", func(query *rest.Request) {
 		args := struct {
 			MaxAge time.Duration `json:"maxAge,string"`
 		}{}
-		if err := query.UnmarshalArguments(&args); err != nil {
+		if err := query.Args(&args); err != nil {
 			return
 		}
 		measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, 3*time.Second)

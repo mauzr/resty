@@ -23,13 +23,13 @@ import (
 	"net/http"
 	"time"
 
-	"go.eqrx.net/mauzr/pkg/rest"
+	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
 // setupHandler provides a http.Handler that sets an SK6812 chain
-func setupHandler(mux *http.ServeMux, strip Strip) {
-	mux.HandleFunc("/color", func(w http.ResponseWriter, r *http.Request) {
-		rest.DefaultResponseHeader(w.Header())
+func setupHandler(c rest.REST, strip Strip) {
+	c.HandleFunc("/color", func(w http.ResponseWriter, r *http.Request) {
+		c.AddDefaultResponseHeader(w.Header())
 		if r.Method != "POST" {
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 			return
@@ -41,7 +41,7 @@ func setupHandler(mux *http.ServeMux, strip Strip) {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 		defer cancel()
 		if err := strip.Set(ctx, setting); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

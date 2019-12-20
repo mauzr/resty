@@ -45,7 +45,7 @@ func SubCommands(p *program.Program) []*cobra.Command {
 			}
 
 			manager := NewBME280Manager(*bus, *address)
-			setupHandler(p.Mux, manager, tags)
+			setupHandler(p.Rest, manager, tags)
 			go manager.Manage(p.Ctx, p.Wg)
 
 			return nil
@@ -67,7 +67,7 @@ func SubCommands(p *program.Program) []*cobra.Command {
 			}
 
 			manager := NewBME680Manager(*bus, *address)
-			setupHandler(p.Mux, manager, tags)
+			setupHandler(p.Rest, manager, tags)
 			go manager.Manage(p.Ctx, p.Wg)
 
 			return nil

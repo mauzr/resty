@@ -36,7 +36,7 @@ func SubCommand(p *program.Program) *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			strip := NewStrip(*tty)
-			setupHandler(p.Mux, strip)
+			setupHandler(p.Rest, strip)
 			go strip.Manage(p.Ctx, p.Wg)
 		},
 	}

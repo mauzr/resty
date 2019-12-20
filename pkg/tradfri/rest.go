@@ -17,10 +17,8 @@ limitations under the License.
 package tradfri
 
 import (
-	"net/http"
-
 	"github.com/bocajim/dtls"
-	"go.eqrx.net/mauzr/pkg/rest"
+	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
 const (
@@ -41,14 +39,15 @@ const (
 `
 )
 
-func setupMapping(mux *http.ServeMux, name, group string, params dtls.PeerParams) {
-	rest.Endpoint(mux, "/"+name, form, func(query *rest.Query) {
+func setupMapping(c rest.REST, name, group string, params dtls.PeerParams) {
+	// TODO get states.
+	c.Endpoint("/"+name, form, func(query *rest.Request) {
 		args := struct {
 			Power *bool    `json:"power,string"`
 			Level *float64 `json:"level,string"`
 		}{}
 
-		if err := query.UnmarshalArguments(&args); err != nil {
+		if err := query.Args(&args); err != nil {
 			return
 		}
 		change := light{}

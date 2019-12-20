@@ -24,34 +24,11 @@ import (
 	"net/http"
 )
 
-type Client interface {
-	Get(context.Context, string, interface{}) error
-	Post(context.Context, string, io.Reader) error
-	Do(*http.Request) (*http.Response, error)
-}
-
-type client struct {
-	http.Client
-}
-
-func NewClient(hostname string) Client {
-	config := TLSConfig(
-		"/etc/ssl/certs/"+hostname+"-client.crt",
-		"/etc/ssl/private/"+hostname+"-client.key",
-	)
-	client := client{
-		http.Client{
-			Transport: &http.Transport{TLSClientConfig: config},
-		},
-	}
-	return &client
-}
-
-func (c *client) Get(ctx context.Context, url string, body interface{}) error {
+func (r *rest) Get(ctx context.Context, url string, body interface{}) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err == nil {
 		var response *http.Response
-		response, err = c.Do(request)
+		response, err = r.client.Do(request)
 
 		switch {
 		case err != nil:
@@ -69,11 +46,11 @@ func (c *client) Get(ctx context.Context, url string, body interface{}) error {
 	return err
 }
 
-func (c *client) Post(ctx context.Context, url string, body io.Reader) error {
+func (r *rest) Post(ctx context.Context, url string, body io.Reader) error {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err == nil {
 		var response *http.Response
-		response, err = c.Do(request)
+		response, err = r.client.Do(request)
 		switch {
 		case err != nil:
 		case response.StatusCode != http.StatusOK:
@@ -83,4 +60,8 @@ func (c *client) Post(ctx context.Context, url string, body io.Reader) error {
 		}
 	}
 	return err
+}
+
+func (r *rest) Do(req *http.Request) (*http.Response, error) {
+	return r.client.Do(req)
 }

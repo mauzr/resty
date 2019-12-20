@@ -17,21 +17,28 @@ limitations under the License.
 package rest
 
 import (
-	"encoding/json"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io/ioutil"
 )
 
-func UnmarshalArguments(args map[string][]string, destination interface{}) error {
-	buffer := map[string]interface{}{}
-	for key, value := range args {
-		if len(value) > 1 {
-			buffer[key] = value
-		} else {
-			buffer[key] = value[0]
-		}
-	}
-	data, err := json.Marshal(buffer)
+func loadCA(caPath string) *x509.CertPool {
+	pool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile(caPath)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to load CA file from %v: %v", caPath, err))
 	}
-	return json.Unmarshal(data, destination)
+	if !pool.AppendCertsFromPEM(ca) {
+		panic(fmt.Errorf("failed to parse CA file from %v", caPath))
+	}
+	return pool
+}
+
+func loadCertificate(crtPath, keyPath string) tls.Certificate {
+	cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
+	if err != nil {
+		panic(fmt.Errorf("failed to load TLS cert/key pair from %v & %v: %v", crtPath, keyPath, err))
+	}
+	return cert
 }

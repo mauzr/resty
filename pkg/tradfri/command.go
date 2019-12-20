@@ -49,7 +49,7 @@ func SubCommand(p *program.Program) *cobra.Command {
 			setupKeys(*client, *psk)
 			params := setupParams(*client, *gateway)
 			for name, group := range *mapping {
-				setupMapping(p.Mux, name, group, params)
+				setupMapping(p.Rest, name, group, params)
 			}
 		},
 	}

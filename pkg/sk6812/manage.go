@@ -64,7 +64,6 @@ func (m *manager) sendChannels(channels []uint8) io.Action {
 func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
-	defer close(m.requests)
 
 	for {
 		select {

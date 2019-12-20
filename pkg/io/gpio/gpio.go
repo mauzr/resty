@@ -36,6 +36,7 @@ type Pin interface {
 	Export() func() error
 	Read(destination *bool) func() error
 	Write(source bool) func() error
+	Identifier() string
 }
 
 // NewPin creates a new Pin. this function can be overridden to

@@ -19,7 +19,6 @@ package program
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -28,16 +27,16 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"go.eqrx.net/mauzr/pkg/rest"
+	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
 type Program struct {
-	RootCommand *cobra.Command
 	Wg          *sync.WaitGroup
 	Ctx         context.Context
 	Cancel      func()
 	Hostname    *string
-	Mux         *http.ServeMux
+	Rest        rest.REST
+	RootCommand *cobra.Command
 }
 
 func (p *Program) ApplyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string) error {
@@ -71,50 +70,45 @@ func New() *Program {
 	binds := flags.StringSliceP("binds", "", nil, "Addresses to listen on")
 	hostname := flags.StringP("hostname", "", "", "Name of this service that is used to bind and pick TLS certificates")
 
-	mux := http.NewServeMux()
-
-	var program *Program
+	program := &Program{
+		&sync.WaitGroup{},
+		ctx,
+		cancel,
+		hostname,
+		nil,
+		nil,
+	}
 
 	rootCommand := cobra.Command{
 		Use:          "mauzr <subcommand>",
 		Short:        "Expose devices to the network",
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return program.ApplyEnvsToFlags(&flags, [][2]string{
+			err := program.ApplyEnvsToFlags(&flags, [][2]string{
 				{"tags", "MAUZR_TAGS"},
 				{"hostname", "MAUZR_HOSTNAME"},
 				{"binds", "MAUZR_BINDS"},
 			})
+			if err != nil {
+				return err
+			}
+			if *binds == nil {
+				*binds = []string{fmt.Sprintf("%s:443", *hostname)}
+			}
+			program.Rest = rest.New(*hostname, *binds)
+			return nil
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			defer cancel()
 			if cmd.Name() == "help" {
 				return nil
 			}
-			if *binds == nil {
-				*binds = []string{fmt.Sprintf("%s:443", *hostname)}
-			}
-			err := rest.ServeAll(
-				ctx,
-				mux,
-				fmt.Sprintf("/etc/ssl/certs/%s-ca.crt", *hostname),
-				fmt.Sprintf("/etc/ssl/certs/%s.crt", *hostname),
-				fmt.Sprintf("/etc/ssl/private/%s.key", *hostname),
-				*binds,
-			)
+			err := program.Rest.Serve(ctx)
 			return err
 		},
 	}
 	rootCommand.PersistentFlags().AddFlagSet(&flags)
-
-	program = &Program{
-		&rootCommand,
-		&sync.WaitGroup{},
-		ctx,
-		cancel,
-		hostname,
-		mux,
-	}
+	program.RootCommand = &rootCommand
 	go program.handleTerminationSignals()
 	return program
 }
