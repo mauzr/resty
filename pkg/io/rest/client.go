@@ -61,7 +61,3 @@ func (r *rest) Post(ctx context.Context, url string, body io.Reader) error {
 	}
 	return err
 }
-
-func (r *rest) Do(req *http.Request) (*http.Response, error) {
-	return r.client.Do(req)
-}

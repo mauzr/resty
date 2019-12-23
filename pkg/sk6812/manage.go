@@ -38,15 +38,13 @@ type setRequest struct {
 	result   chan error
 }
 
-// Strip represents a SK6812 strip.
-type Strip interface {
+type Manager interface {
 	Manage(context.Context, *sync.WaitGroup)
 	Set(context.Context, []uint8) error
 }
 
-// NewStrip creates a new SK6812 strip manager.
-func NewStrip(path string) Strip {
-	return &manager{uart.NewPort(path, unix.B115200), make(chan setRequest)}
+func NewManager(path string) Manager {
+	return &manager{uart.NewPort(path, unix.B921600), make(chan setRequest)}
 }
 
 func (m *manager) sendChannels(channels []uint8) io.Action {
@@ -56,11 +54,11 @@ func (m *manager) sendChannels(channels []uint8) io.Action {
 			m.port.Write(channels),
 			m.port.ResetInput(),
 		}
-		return io.Execute(actions, []io.Action{})
+		err := io.Execute(actions, []io.Action{})
+		return err
 	}
 }
 
-// Manage performs management operations until canceled.
 func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()

@@ -35,7 +35,7 @@ func SubCommand(p *program.Program) *cobra.Command {
 			return p.ApplyEnvsToFlags(&flags, [][2]string{{"tty", "MAUZR_TTY"}})
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			strip := NewStrip(*tty)
+			strip := NewManager(*tty)
 			setupHandler(p.Rest, strip)
 			go strip.Manage(p.Ctx, p.Wg)
 		},

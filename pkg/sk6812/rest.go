@@ -27,7 +27,7 @@ import (
 )
 
 // setupHandler provides a http.Handler that sets an SK6812 chain
-func setupHandler(c rest.REST, strip Strip) {
+func setupHandler(c rest.REST, strip Manager) {
 	c.HandleFunc("/color", func(w http.ResponseWriter, r *http.Request) {
 		c.AddDefaultResponseHeader(w.Header())
 		if r.Method != "POST" {

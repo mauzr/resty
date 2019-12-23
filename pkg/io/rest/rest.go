@@ -31,7 +31,6 @@ type REST interface {
 	Serve(context.Context) error
 	HandleFunc(string, func(http.ResponseWriter, *http.Request))
 	AddDefaultResponseHeader(http.Header)
-	Do(req *http.Request) (*http.Response, error)
 }
 
 type rest struct {
