@@ -22,13 +22,18 @@ import (
 	"net/http"
 )
 
-type Dummy struct {
+type dummy struct {
 }
 
-func (d Dummy) Get(context.Context, string, interface{}) error                { return nil }
-func (d Dummy) Post(context.Context, string, io.Reader) error                 { return nil }
-func (d Dummy) Endpoint(path, form string, queryHandler func(query *Request)) {}
-func (d Dummy) Serve(context.Context) error                                   { return nil }
-func (d Dummy) HandleFunc(string, func(http.ResponseWriter, *http.Request))   {}
-func (d Dummy) AddDefaultResponseHeader(http.Header)                          {}
-func (d Dummy) Do(req *http.Request) (*http.Response, error)                  { return nil, nil }
+func (d dummy) GetRaw(context.Context, string) (*http.Response, error)             { return nil, nil }
+func (d dummy) PostRaw(context.Context, string, io.Reader) (*http.Response, error) { return nil, nil }
+func (d dummy) GetJSON(context.Context, string, interface{}) Error                 { return nil }
+func (d dummy) GetEndpoint(path, form string, queryHandler func(query *Request))   {}
+func (d dummy) Serve(context.Context) error                                        { return nil }
+func (d dummy) HandleFunc(string, func(http.ResponseWriter, *http.Request))        {}
+func (d dummy) AddDefaultResponseHeader(http.Header)                               {}
+func (d dummy) Do(req *http.Request) (*http.Response, error)                       { return nil, nil }
+
+func NewDummy() REST {
+	return &dummy{}
+}

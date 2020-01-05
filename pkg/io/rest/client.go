@@ -24,40 +24,61 @@ import (
 	"net/http"
 )
 
-func (r *rest) Get(ctx context.Context, url string, body interface{}) error {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err == nil {
-		var response *http.Response
-		response, err = r.client.Do(request)
-
-		switch {
-		case err != nil:
-		case response.StatusCode != http.StatusOK:
-			err = fmt.Errorf("%v", response.Status)
-		default:
-			defer response.Body.Close()
-			if body != nil {
-				if err = json.NewDecoder(response.Body).Decode(&body); err != nil {
-					err = fmt.Errorf("could not deserialize JSON - %v", err)
-				}
-			}
-		}
-	}
-	return err
+type Error interface {
+	Error() string
+	StatusCode() int
 }
 
-func (r *rest) Post(ctx context.Context, url string, body io.Reader) error {
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
-	if err == nil {
-		var response *http.Response
-		response, err = r.client.Do(request)
-		switch {
-		case err != nil:
-		case response.StatusCode != http.StatusOK:
-			err = fmt.Errorf("%v", response.Status)
-		default:
-			response.Body.Close()
-		}
+type httpError struct {
+	statusCode int
+	cause      error
+}
+
+func (h httpError) StatusCode() int {
+	return h.statusCode
+}
+
+func (h httpError) Error() string {
+	switch {
+	case h.cause != nil:
+		return h.cause.Error()
+	case h.statusCode != 0:
+		return http.StatusText(h.statusCode)
+	default:
+		panic("empty error")
 	}
-	return err
+}
+
+func (r *rest) GetRaw(ctx context.Context, url string) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return r.client.Do(request)
+}
+
+func (r *rest) GetJSON(ctx context.Context, url string, target interface{}) Error {
+	response, err := r.GetRaw(ctx, url)
+	if err != nil {
+		return &httpError{0, err}
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return &httpError{response.StatusCode, nil}
+	}
+	if err := json.NewDecoder(response.Body).Decode(&target); err != nil {
+		return &httpError{0, fmt.Errorf("could not deserialize JSON - %v", err)}
+	}
+	return nil
+}
+
+func (r *rest) PostRaw(ctx context.Context, url string, body io.Reader) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
+	if err != nil {
+		panic(err)
+	}
+
+	return r.client.Do(request)
 }

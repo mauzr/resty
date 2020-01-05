@@ -26,7 +26,7 @@ import (
 
 // setupHandler creates a http.Handler that handles BME680 measurements.
 func setupHandler(c rest.REST, manager Manager, tags map[string]string) {
-	c.Endpoint("/measurement", "", func(query *rest.Request) {
+	c.GetEndpoint("/measurement", "", func(query *rest.Request) {
 		args := struct {
 			MaxAge time.Duration `json:"maxAge,string"`
 		}{}

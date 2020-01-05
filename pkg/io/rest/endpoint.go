@@ -58,7 +58,7 @@ func (r *rest) HandleFunc(path string, handler func(http.ResponseWriter, *http.R
 	r.mux.HandleFunc(path, handler)
 }
 
-func (r *rest) Endpoint(path, form string, queryHandler func(query *Request)) {
+func (r *rest) GetEndpoint(path, form string, queryHandler func(query *Request)) {
 	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		r.AddDefaultResponseHeader(w.Header())
 		switch {

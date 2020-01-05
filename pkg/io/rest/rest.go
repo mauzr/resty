@@ -25,9 +25,10 @@ import (
 )
 
 type REST interface {
-	Get(context.Context, string, interface{}) error
-	Post(context.Context, string, io.Reader) error
-	Endpoint(path, form string, queryHandler func(query *Request))
+	GetJSON(context.Context, string, interface{}) Error
+	GetRaw(context.Context, string) (*http.Response, error)
+	PostRaw(context.Context, string, io.Reader) (*http.Response, error)
+	GetEndpoint(path, form string, queryHandler func(query *Request))
 	Serve(context.Context) error
 	HandleFunc(string, func(http.ResponseWriter, *http.Request))
 	AddDefaultResponseHeader(http.Header)
@@ -48,6 +49,9 @@ func New(hostname string, listenAddresses []string) REST {
 		make(chan error),
 	}
 	rest.client = http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				ClientAuth:               tls.RequireAndVerifyClientCert,

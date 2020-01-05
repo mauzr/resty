@@ -41,7 +41,7 @@ const (
 
 func setupMapping(c rest.REST, name, group string, params dtls.PeerParams) {
 	// TODO get states.
-	c.Endpoint("/"+name, form, func(query *rest.Request) {
+	c.GetEndpoint("/"+name, form, func(query *rest.Request) {
 		args := struct {
 			Power *bool    `json:"power,string"`
 			Level *float64 `json:"level,string"`
