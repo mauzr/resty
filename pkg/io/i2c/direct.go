@@ -60,15 +60,11 @@ func (d *normalDevice) Close() io.Action {
 // WriteRead execute an I2C write followed by a read in the same transaction.
 func (d *normalDevice) WriteRead(source []byte, destination []byte) io.Action {
 	return func() error {
-		amount := int16(len(destination))
 		parts := []ioctlPart{
 			{addr: d.address, flags: 0, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},
-			{addr: d.address, flags: ioctlReadOperation, len: uint16(amount), buf: uintptr(unsafe.Pointer(&destination[0]))},
+			{addr: d.address, flags: ioctlReadOperation, len: uint16(len(destination)), buf: uintptr(unsafe.Pointer(&destination[0]))},
 		}
-		msg := ioctlArg{
-			msgs:  uintptr(unsafe.Pointer(&parts[0])),
-			nmsgs: uint32(len(parts)),
-		}
+		msg := ioctlArg{msgs: uintptr(unsafe.Pointer(&parts[0])), nmsgs: 2}
 
 		if err := d.file.Ioctl(ioctlReadWriteOperation, uintptr(unsafe.Pointer(&msg)))(); err != nil {
 			return fmt.Errorf("failed to write %v and read #%v to I2C address %v because \"%v\"", source, len(destination), d.address, err)
@@ -81,18 +77,9 @@ func (d *normalDevice) WriteRead(source []byte, destination []byte) io.Action {
 func (d *normalDevice) Write(source []byte) io.Action {
 	return func() error {
 		parts := []ioctlPart{
-			{
-				addr:  uint16(0x77),
-				flags: 0,
-				len:   uint16(len(source)),
-				buf:   uintptr(unsafe.Pointer(&source[0])),
-			},
+			{addr: d.address, flags: 0, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},
 		}
-
-		msg := ioctlArg{
-			msgs:  uintptr(unsafe.Pointer(&parts[0])),
-			nmsgs: uint32(len(parts)),
-		}
+		msg := ioctlArg{msgs: uintptr(unsafe.Pointer(&parts[0])), nmsgs: 1}
 
 		if err := d.file.Ioctl(ioctlReadWriteOperation, uintptr(unsafe.Pointer(&msg)))(); err != nil {
 			return fmt.Errorf("failed to write %v to I2C address %v because \"%v\"", source, d.address, err)
