@@ -1,4 +1,10 @@
-GOLDFLAGS=-s -w -extldflags '-zrelro -znow'
+export BUILD_DATE=$(shell if hash gdate 2>/dev/null; then gdate --rfc-3339=seconds | sed 's/ /T/'; else date --rfc-3339=seconds | sed 's/ /T/'; fi)
+export GITCOMMIT=$(shell git log -1 --pretty=format:"%H")
+export GOLDFLAGS=-s -w -extldflags '-zrelro -znow' -X go.eqrx.net/mauzr.version=$(GITTAG) -X go.eqrx.net/mauzr.commit=$(GITCOMMIT) -X go.eqrx.net/mauzr.date=$(BUILD_DATE)
+export GOFLAGS=-trimpath
+export GITTAG=$(shell git describe --tags --always)
+#export IMAGE=quay.io/eqrx/mauzr
+export IMAGE=docker.pkg.github.com/eqrx/mauzr/mauzr
 
 .PHONY: all
 all: build
@@ -30,15 +36,14 @@ vet:
 download:
 	go mod download
 
-.PHONY: build-image
-build-image:
-	docker build -t docker.pkg.github.com/eqrx/mauzr/mauzr:latest -f build/Dockerfile .
-
-.PHONY: push-image
-push-image:
-	docker push docker.pkg.github.com/eqrx/mauzr/mauzr:latest
-
 .PHONY: fmt
 fmt:
 	gofmt -s -w .
 
+.PHONY: build-image
+build-image: build
+	./build/buildah.sh
+
+.PHONY: push-image
+push-image:
+	buildah manifest push --all $(IMAGE):$(GITTAG) docker://$(IMAGE):$(GITTAG)
