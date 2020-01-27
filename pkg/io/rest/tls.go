@@ -42,3 +42,7 @@ func loadCertificate(crtPath, keyPath string) tls.Certificate {
 	}
 	return cert
 }
+
+func (r *rest) ServerNames() []string {
+	return r.serverNames
+}

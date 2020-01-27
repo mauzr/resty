@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/io/rest"
@@ -28,25 +27,17 @@ import (
 
 // setupHandler provides a http.Handler that sets an SK6812 chain
 func setupHandler(c rest.REST, strip Manager) {
-	c.HandleFunc("/color", func(w http.ResponseWriter, r *http.Request) {
-		c.AddDefaultResponseHeader(w.Header())
-		if r.Method != "POST" {
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
-		}
-
+	c.Endpoint("/color", "", func(r *rest.Request) {
 		setting := make([]uint8, 0)
-		if err := json.NewDecoder(r.Body).Decode(&setting); err != nil {
-			http.Error(w, fmt.Errorf("illegal setting data: %v", err).Error(), http.StatusBadRequest)
+		if err := json.Unmarshal(r.RequestBody, &setting); err != nil {
+			r.RequestError = fmt.Errorf("illegal setting data: %v", err)
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+		ctx, cancel := context.WithTimeout(r.Ctx, 1*time.Second)
 		defer cancel()
 		if err := strip.Set(ctx, setting); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			w.WriteHeader(http.StatusOK)
+			r.InternalError = err
 		}
 	})
 }

@@ -28,11 +28,10 @@ type dummy struct {
 func (d dummy) GetRaw(context.Context, string) (*http.Response, error)             { return nil, nil }
 func (d dummy) PostRaw(context.Context, string, io.Reader) (*http.Response, error) { return nil, nil }
 func (d dummy) GetJSON(context.Context, string, interface{}) Error                 { return nil }
-func (d dummy) GetEndpoint(path, form string, queryHandler func(query *Request))   {}
+func (d dummy) Endpoint(path, form string, queryHandler func(query *Request))      {}
 func (d dummy) Serve(context.Context) error                                        { return nil }
-func (d dummy) HandleFunc(string, func(http.ResponseWriter, *http.Request))        {}
 func (d dummy) AddDefaultResponseHeader(http.Header)                               {}
-func (d dummy) Do(req *http.Request) (*http.Response, error)                       { return nil, nil }
+func (d dummy) ServerNames() []string                                              { return nil }
 
 func NewDummy() REST {
 	return &dummy{}

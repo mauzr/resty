@@ -19,17 +19,20 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 type Request struct {
-	RequestError, InternalError, GatewayError error
-	Status                                    int
-	ResponseBody                              []byte
 	Ctx                                       context.Context
 	URL                                       url.URL
+	RequestBody                               []byte
+	ResponseBody                              []byte
+	Status                                    int
+	RequestError, InternalError, GatewayError error
+	Redirect                                  string
 }
 
 func (r *Request) Args(target interface{}) error {
@@ -58,22 +61,22 @@ func (r *rest) HandleFunc(path string, handler func(http.ResponseWriter, *http.R
 	r.mux.HandleFunc(path, handler)
 }
 
-func (r *rest) GetEndpoint(path, form string, queryHandler func(query *Request)) {
+func (r *rest) Endpoint(path, form string, queryHandler func(query *Request)) {
 	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		r.AddDefaultResponseHeader(w.Header())
 		switch {
-		case req.Method != http.MethodGet:
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		case len(req.URL.Query()) == 0:
+		case req.Method == http.MethodGet && len(req.URL.Query()) == 0 && form != "":
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte(form))
 			if err != nil {
 				panic(err)
 			}
 		default:
-			ctx, cancel := context.WithTimeout(req.Context(), 3*time.Second)
-			defer cancel()
-			response := Request{nil, nil, nil, http.StatusOK, nil, ctx, *req.URL}
+			requestBody, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				panic(err)
+			}
+			response := Request{req.Context(), *req.URL, requestBody, nil, http.StatusOK, nil, nil, nil, req.URL.Scheme + req.URL.Host + req.URL.Path}
 			queryHandler(&response)
 			switch {
 			case response.RequestError != nil:
@@ -82,14 +85,19 @@ func (r *rest) GetEndpoint(path, form string, queryHandler func(query *Request))
 				http.Error(w, response.GatewayError.Error(), http.StatusBadGateway)
 			case response.InternalError != nil:
 				http.Error(w, response.InternalError.Error(), http.StatusInternalServerError)
+			}
+
+			w.WriteHeader(response.Status)
+			switch {
+			case req.Method != http.MethodGet && response.ResponseBody != nil:
+				panic(fmt.Errorf("response body only allowed for get method"))
 			case response.ResponseBody != nil:
-				w.WriteHeader(response.Status)
 				_, err := w.Write(response.ResponseBody)
 				if err != nil {
 					panic(err)
 				}
 			default:
-				http.Redirect(w, req, req.URL.Scheme+req.URL.Host+req.URL.Path, http.StatusSeeOther)
+				http.Redirect(w, req, response.Redirect, http.StatusSeeOther)
 			}
 		}
 	})

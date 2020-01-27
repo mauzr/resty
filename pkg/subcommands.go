@@ -17,7 +17,11 @@ limitations under the License.
 package pkg
 
 import (
+	"context"
+	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
@@ -27,7 +31,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/tradfri"
 )
 
-func completeCmd(rootCmd *cobra.Command) *cobra.Command {
+func completeCmd(p *program.Program) *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:       "completion <bash|zsh>",
 		Short:     "Generates completion scripts for bash and zsh",
@@ -36,9 +40,9 @@ func completeCmd(rootCmd *cobra.Command) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			switch args[0] {
 			case "bash":
-				err = rootCmd.GenBashCompletion(os.Stdout)
+				err = p.RootCommand.GenBashCompletion(os.Stdout)
 			case "zsh":
-				err = rootCmd.GenZshCompletion(os.Stdout)
+				err = p.RootCommand.GenZshCompletion(os.Stdout)
 			}
 			return
 		},
@@ -46,7 +50,7 @@ func completeCmd(rootCmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
-func documentCmd(rootCmd *cobra.Command) *cobra.Command {
+func documentCmd(p *program.Program) *cobra.Command {
 	var path string
 	var cmd = &cobra.Command{
 		Use:       "document <man|md|rest|yaml>",
@@ -60,13 +64,13 @@ func documentCmd(rootCmd *cobra.Command) *cobra.Command {
 					Title:   "Mauzr",
 					Section: "1",
 				}
-				err = doc.GenManTree(rootCmd, header, path)
+				err = doc.GenManTree(p.RootCommand, header, path)
 			case "md":
-				err = doc.GenMarkdownTree(rootCmd, path)
+				err = doc.GenMarkdownTree(p.RootCommand, path)
 			case "rest":
-				err = doc.GenReSTTree(rootCmd, path)
+				err = doc.GenReSTTree(p.RootCommand, path)
 			case "yaml":
-				err = doc.GenYamlTree(rootCmd, path)
+				err = doc.GenYamlTree(p.RootCommand, path)
 			}
 			return
 		},
@@ -77,11 +81,40 @@ func documentCmd(rootCmd *cobra.Command) *cobra.Command {
 	return cmd
 }
 
+func healthcheckCmd(p *program.Program) *cobra.Command {
+	command := cobra.Command{
+		Use:   "healthcheck",
+		Short: "Check the health of the configured agent",
+		Long:  "Check the health of the configured agent via REST",
+		Run: func(cmd *cobra.Command, args []string) {
+			names := []string{}
+			results := make(chan bool)
+			for _, name := range names {
+				go func(n string) {
+					ctx, cancel := context.WithTimeout(p.Ctx, 4*time.Second)
+					defer cancel()
+					r, err := p.Rest.GetRaw(ctx, fmt.Sprintf("https://%s/health", n))
+					r.Body.Close()
+					results <- err == nil && r.StatusCode == http.StatusOK
+				}(name)
+			}
+			for i := 0; i < len(names); i++ {
+				if !<-results {
+					os.Exit(1)
+				}
+			}
+			os.Exit(0)
+		},
+	}
+	return &command
+}
+
 // SetupCommands adds subcommands of this pkg.
 func SetupCommands(p *program.Program) {
 	subCommands := []*cobra.Command{
-		documentCmd(p.RootCommand),
-		completeCmd(p.RootCommand),
+		documentCmd(p),
+		completeCmd(p),
+		healthcheckCmd(p),
 		sk6812.SubCommand(p),
 		tradfri.SubCommand(p),
 	}
