@@ -95,7 +95,7 @@ func (m *Manager) reset(ctx context.Context) {
 		if err := m.model.Reset(m.bus, m.device); err == nil {
 			break
 		} else {
-			fmt.Printf("Reset failed: %v\n", err)
+			fmt.Printf("reset failed: %v\n", err)
 		}
 
 		select {
@@ -122,7 +122,7 @@ func (m *Manager) run(ctx context.Context) {
 				if newMeasurment, err := m.model.Measure(m.bus, m.device); err == nil {
 					m.measurement = newMeasurment
 				} else {
-					fmt.Printf("Measurement failed: %v\n", err)
+					fmt.Printf("measurement failed: %v\n", err)
 					return
 				}
 			}

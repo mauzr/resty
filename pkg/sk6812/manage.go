@@ -18,18 +18,19 @@ package sk6812
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"sync"
-	"time"
 
 	"go.eqrx.net/mauzr/pkg/io"
-	"go.eqrx.net/mauzr/pkg/io/uart"
-	"golang.org/x/sys/unix"
+	"go.eqrx.net/mauzr/pkg/io/i2c"
+)
+
+const (
+	I2CCommand = 0x01
 )
 
 type manager struct {
-	port     uart.Port
+	device   i2c.Device
 	requests chan setRequest
 }
 
@@ -43,20 +44,8 @@ type Manager interface {
 	Set(context.Context, []uint8) error
 }
 
-func NewManager(path string) Manager {
-	return &manager{uart.NewPort(path, unix.B921600), make(chan setRequest)}
-}
-
-func (m *manager) sendChannels(channels []uint8) io.Action {
-	return func() error {
-		actions := []io.Action{
-			m.port.WriteBinary(binary.LittleEndian, uint16(len(channels))),
-			m.port.Write(channels),
-			m.port.ResetInput(),
-		}
-		err := io.Execute(actions, []io.Action{})
-		return err
-	}
+func NewManager(path string, address uint16) Manager {
+	return &manager{i2c.NewDevice(path, address), make(chan setRequest)}
 }
 
 func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
@@ -64,20 +53,8 @@ func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-		lastLength := 0
 		actions := []io.Action{
-			m.port.Open(),
-			m.port.ResetOutput(),
-			m.port.DTR(false),
-			m.port.RTS(true),
-			io.Sleep(1 * time.Second),
-			m.port.RTS(false),
-			m.port.ResetInput(),
+			m.device.Open(),
 			func() error {
 				for {
 					select {
@@ -85,27 +62,23 @@ func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 						return nil
 					case request := <-m.requests:
 						channels, ok := <-request.channels
-						if !ok {
-							continue
-						}
-						err := m.sendChannels(channels)()
-						request.result <- err
-						if err != nil {
-							return err
+						if ok {
+							data := append([]uint8{I2CCommand}, channels...)
+							err := io.Execute([]io.Action{m.device.Write(data)}, []io.Action{})
+							request.result <- err
+							if err != nil {
+								return err
+							}
 						}
 					}
 				}
 			},
 		}
 		err := io.Execute(actions, []io.Action{
-			func() error {
-				m.sendChannels(make([]uint8, lastLength))
-				return nil
-			},
-			m.port.Close(),
+			m.device.Close(),
 		})
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(fmt.Errorf("ignoring error while writing to sk6812 manager: %v", err))
 		}
 	}
 }

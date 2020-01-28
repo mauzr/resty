@@ -25,7 +25,8 @@ import (
 // SubCommand creates a cobra command for this driver.
 func SubCommand(p *program.Program) *cobra.Command {
 	flags := pflag.FlagSet{}
-	tty := flags.StringP("tty", "y", "/dev/ttyUSB0", "TTY to use for connection")
+	bus := flags.StringP("bus", "b", "/dev/i2c-1", "Path of the linux bus to use")
+	address := flags.Uint16P("address", "a", 0x28, "I2C address of the device")
 
 	command := cobra.Command{
 		Use:   "sk6812",
@@ -35,13 +36,13 @@ func SubCommand(p *program.Program) *cobra.Command {
 			return p.ApplyEnvsToFlags(&flags, [][2]string{{"tty", "MAUZR_TTY"}})
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			strip := NewManager(*tty)
+			strip := NewManager(*bus, *address)
 			setupHandler(p.Rest, strip)
 			go strip.Manage(p.Ctx, p.Wg)
 		},
 	}
 
-	if err := cobra.MarkFlagFilename(&flags, "tty"); err != nil {
+	if err := cobra.MarkFlagFilename(&flags, "bus"); err != nil {
 		panic(err)
 	}
 

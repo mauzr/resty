@@ -22,16 +22,27 @@ import (
 	"net/http"
 )
 
+type BodyDummy struct{}
+
+func (b *BodyDummy) Close() error { return nil }
+func (b *BodyDummy) Read(p []byte) (n int, err error) {
+	return 0, nil
+}
+
 type dummy struct {
 }
 
-func (d dummy) GetRaw(context.Context, string) (*http.Response, error)             { return nil, nil }
-func (d dummy) PostRaw(context.Context, string, io.Reader) (*http.Response, error) { return nil, nil }
-func (d dummy) GetJSON(context.Context, string, interface{}) Error                 { return nil }
-func (d dummy) Endpoint(path, form string, queryHandler func(query *Request))      {}
-func (d dummy) Serve(context.Context) error                                        { return nil }
-func (d dummy) AddDefaultResponseHeader(http.Header)                               {}
-func (d dummy) ServerNames() []string                                              { return nil }
+func (d dummy) ServerNames() []string                                         { return nil }
+func (d dummy) AddDefaultResponseHeader(http.Header)                          {}
+func (d dummy) Serve(context.Context) error                                   { return nil }
+func (d dummy) Endpoint(path, form string, queryHandler func(query *Request)) {}
+func (d dummy) GetJSON(context.Context, string, interface{}) Error            { return nil }
+func (d dummy) GetRaw(context.Context, string) (*http.Response, error) {
+	return &http.Response{Body: &BodyDummy{}}, nil
+}
+func (d dummy) PostRaw(context.Context, string, io.Reader) (*http.Response, error) {
+	return &http.Response{Body: &BodyDummy{}}, nil
+}
 
 func NewDummy() REST {
 	return &dummy{}
