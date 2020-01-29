@@ -4,7 +4,6 @@ Description=Mauzr agent
 
 [Service]
 User=mauzr
-EnvironmentFile=-/etc/mauzr/common
 EnvironmentFile=/etc/mauzr/%i
 ExecStart=/usr/bin/mauzr $MAUZR_DEVICE
 

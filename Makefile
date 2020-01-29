@@ -3,7 +3,6 @@ export GITCOMMIT=$(shell git log -1 --pretty=format:"%H")
 export GOLDFLAGS=-s -w -extldflags '-zrelro -znow' -X go.eqrx.net/mauzr.version=$(GITTAG) -X go.eqrx.net/mauzr.commit=$(GITCOMMIT) -X go.eqrx.net/mauzr.date=$(BUILD_DATE)
 export GOFLAGS=-trimpath
 export GITTAG=$(shell git describe --tags --always)
-#export IMAGE=quay.io/eqrx/mauzr
 export IMAGE=docker.pkg.github.com/eqrx/mauzr/mauzr
 
 .PHONY: all
