@@ -25,6 +25,7 @@ import (
 	"net/url"
 )
 
+// Request contains information from a request and how to handle it.
 type Request struct {
 	Ctx                                       context.Context
 	URL                                       url.URL
@@ -35,6 +36,7 @@ type Request struct {
 	Redirect                                  string
 }
 
+// Args are parsed from the url into the given struct.
 func (r *Request) Args(target interface{}) error {
 	args := r.URL.Query()
 	buffer := map[string]interface{}{}
@@ -53,14 +55,12 @@ func (r *Request) Args(target interface{}) error {
 	return r.RequestError
 }
 
+// AddDefaultResponseHeader to the given header.
 func (r *rest) AddDefaultResponseHeader(header http.Header) {
 	header.Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 }
 
-func (r *rest) HandleFunc(path string, handler func(http.ResponseWriter, *http.Request)) {
-	r.mux.HandleFunc(path, handler)
-}
-
+// Endpoint provides a server end point for a rest application. The given handler is called on each invoction.
 func (r *rest) Endpoint(path, form string, queryHandler func(query *Request)) {
 	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		r.AddDefaultResponseHeader(w.Header())
@@ -85,13 +85,10 @@ func (r *rest) Endpoint(path, form string, queryHandler func(query *Request)) {
 				http.Error(w, response.GatewayError.Error(), http.StatusBadGateway)
 			case response.InternalError != nil:
 				http.Error(w, response.InternalError.Error(), http.StatusInternalServerError)
-			}
-
-			w.WriteHeader(response.Status)
-			switch {
 			case req.Method != http.MethodGet && response.ResponseBody != nil:
 				panic(fmt.Errorf("response body only allowed for get method"))
 			case response.ResponseBody != nil:
+				w.WriteHeader(response.Status)
 				_, err := w.Write(response.ResponseBody)
 				if err != nil {
 					panic(err)

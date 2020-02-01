@@ -26,6 +26,7 @@ import (
 	"net/http"
 )
 
+// Serve blocks and runs the configured http servers.
 func (r *rest) Serve(ctx context.Context) error {
 	for i := range r.servers {
 		go func(server *http.Server, listener *net.Listener) {
@@ -47,11 +48,11 @@ func (r *rest) Serve(ctx context.Context) error {
 				continue
 			}
 		case err := <-r.serverErrors:
-			remaining -= 1
+			remaining--
 			switch {
 			case err != nil:
 				errors = append(errors, err)
-			case err == nil && !terminated:
+			case !terminated:
 				panic(fmt.Errorf("server terminated error free without being asked so"))
 			case terminated:
 				continue

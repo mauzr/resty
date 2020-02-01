@@ -26,28 +26,34 @@ import (
 )
 
 const (
+	// I2CCommand is the command bit that shall be prepended to indicate the control chip that the strip shall be set.
 	I2CCommand = 0x01
 )
 
-type manager struct {
-	device   i2c.Device
-	requests chan setRequest
-}
-
-type setRequest struct {
-	channels chan []uint8
-	result   chan error
-}
-
+// Manager represents a management component that controls an SK6812 strip.
 type Manager interface {
 	Manage(context.Context, *sync.WaitGroup)
 	Set(context.Context, []uint8) error
 }
 
-func NewManager(path string, address uint16) Manager {
-	return &manager{i2c.NewDevice(path, address), make(chan setRequest)}
+// manager implements Manager
+type manager struct {
+	device   i2c.Device
+	requests chan setRequest
 }
 
+// setRequest lets the manager apply some value to
+type setRequest struct {
+	channels chan []uint8
+	result   chan error
+}
+
+// NewManager creates a new manager for an SK6812 strip.
+func NewManager(path string, address uint16) Manager {
+	return &manager{i2c.New(path, address), make(chan setRequest)}
+}
+
+// Manage is the main loop of the manager that handles the strip.
 func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()

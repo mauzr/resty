@@ -61,21 +61,24 @@ type calibrationInput struct {
 	G3     int8
 }
 
+// Model represents the specific BME280 model.
 type Model struct {
 	calibrations Calibrations
 }
 
-func NewModel() *Model {
+// New creates a new BME280 mode representation.
+func New() *Model {
 	return &Model{}
 }
 
+// Calibrations return the calibration data from the cip.
 func (m *Model) Calibrations() Calibrations {
 	return m.calibrations
 }
 
 // Reset resets the BME680 behind the given address and fetches the calibration.
 func (m *Model) Reset(bus string, address uint16) error {
-	device := i2c.NewDevice(bus, address)
+	device := i2c.New(bus, address)
 	var data [42]byte
 	var swError [1]byte
 	actions := []io.Action{
@@ -105,7 +108,7 @@ func (m *Model) Reset(bus string, address uint16) error {
 
 // Measure creates a measurement with the given BME680 behind the given address.
 func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) {
-	device := i2c.NewDevice(bus, address)
+	device := i2c.New(bus, address)
 	var reading [15]byte
 	actions := []io.Action{
 		device.Write([]byte{0xe0, 0xb6}),

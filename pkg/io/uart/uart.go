@@ -29,13 +29,21 @@ import (
 
 // Port is an UART port handle.
 type Port interface {
+	// Open the connection to the port.
 	Open() io.Action
+	// Close the port connection.
 	Close() io.Action
+	// Write data over the port.
 	Write([]byte) io.Action
+	// WriteBinary data over the port.
 	WriteBinary(binary.ByteOrder, interface{}) io.Action
+	// RTS state setting.
 	RTS(bool) io.Action
+	// DTR state setting.
 	DTR(bool) io.Action
+	// ResetOutput purges UART output that hasn't been sent yet.
 	ResetOutput() io.Action
+	// ResetInput purges UART input that hasn't been handled yet.
 	ResetInput() io.Action
 }
 
@@ -47,9 +55,10 @@ type normalPort struct {
 
 // NewPort creates a new UART port handler
 func NewPort(path string, baud uint32) Port {
-	return &normalPort{file.NewFile(path), baud, path}
+	return &normalPort{file.New(path), baud, path}
 }
 
+// Open a connection to the port.
 func (p *normalPort) Open() io.Action {
 	return func() error {
 		settings := unix.Termios{}
@@ -64,7 +73,7 @@ func (p *normalPort) Open() io.Action {
 	}
 }
 
-// Close the port.
+// Close the port connection.
 func (p *normalPort) Close() io.Action {
 	return p.file.Close()
 }
@@ -103,7 +112,7 @@ func (p *normalPort) ResetOutput() io.Action {
 	return p.file.Ioctl(unix.TCFLSH, unix.TCOFLUSH)
 }
 
-// ResetOutput purges UART input that hasn't been handled yet.
+// ResetInput purges UART input that hasn't been handled yet.
 func (p *normalPort) ResetInput() io.Action {
 	return p.file.Ioctl(unix.TCFLSH, unix.TCIFLUSH)
 }

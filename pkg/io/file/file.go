@@ -28,38 +28,43 @@ import (
 
 // File represents a file.
 type File interface {
+	// Open the file.
 	Open(int, os.FileMode) io.Action
+	// Close the file.
 	Close() io.Action
+	// Write writes bytes to the file.
 	Write([]byte) io.Action
+	// WriteString writes a string to the file.
 	WriteString(string) io.Action
+	// WriteBinary uses binary.Write to write and interface to the file.
 	WriteBinary(order binary.ByteOrder, data interface{}) io.Action
-	Seek(int64, int, *int64) io.Action
+	// SeekTo a location in the file.
+	SeekTo(int64) io.Action
+	// Read bytes from the file.
 	Read([]byte) io.Action
+	// ReadString reads a string from the file.
 	ReadString(*string, int) io.Action
+	// Ioctl execute an IOCTL command.
 	Ioctl(uintptr, uintptr) io.Action
+	// Unmap file from memory.
 	Unmap(*[]byte) io.Action
+	// Map file to memory.
 	Map(int64, int, int, int, *[]byte) io.Action
-	Fd() uintptr
 }
 
-type normalFile struct {
+// file is just a plain old os.File.
+type file struct {
 	path   string
 	handle *os.File
 }
 
-// NewFile creates a new Device. this function can be overridden to mock the device.
-var NewFile = newNormalFile
-
-func newNormalFile(path string) File {
-	return &normalFile{path: path}
-}
-
-func (f *normalFile) Fd() uintptr {
-	return f.handle.Fd()
+// New create a new file representation.
+func New(path string) File {
+	return &file{path: path}
 }
 
 // Open the file.
-func (f *normalFile) Open(flags int, mask os.FileMode) io.Action {
+func (f *file) Open(flags int, mask os.FileMode) io.Action {
 	return func() error {
 		h, err := os.OpenFile(f.path, flags, mask)
 		if err != nil {
@@ -70,8 +75,8 @@ func (f *normalFile) Open(flags int, mask os.FileMode) io.Action {
 	}
 }
 
-// Unmap file from memory
-func (f *normalFile) Unmap(memoryMap *[]byte) io.Action {
+// Unmap file from memory.
+func (f *file) Unmap(memoryMap *[]byte) io.Action {
 	return func() error {
 		defer func() { *memoryMap = nil }()
 		if err := unix.Munmap(*memoryMap); err != nil {
@@ -81,10 +86,10 @@ func (f *normalFile) Unmap(memoryMap *[]byte) io.Action {
 	}
 }
 
-// Map file to memory
-func (f *normalFile) Map(offset int64, length, prot, flags int, memoryMap *[]byte) io.Action {
+// Map file to memory.
+func (f *file) Map(offset int64, length, prot, flags int, memoryMap *[]byte) io.Action {
 	return func() error {
-		if mmem, err := unix.Mmap(int(f.Fd()), offset, length, prot, flags); err == nil {
+		if mmem, err := unix.Mmap(int(f.handle.Fd()), offset, length, prot, flags); err == nil {
 			*memoryMap = mmem
 		} else {
 			return fmt.Errorf("could not map memory: %v", err)
@@ -94,7 +99,7 @@ func (f *normalFile) Map(offset int64, length, prot, flags int, memoryMap *[]byt
 }
 
 // Close the file.
-func (f *normalFile) Close() io.Action {
+func (f *file) Close() io.Action {
 	return func() error {
 		err := f.handle.Close()
 		f.handle = nil
@@ -105,8 +110,8 @@ func (f *normalFile) Close() io.Action {
 	}
 }
 
-// Write bytes to the file.
-func (f *normalFile) Write(data []byte) io.Action {
+// Write writes bytes to the file.
+func (f *file) Write(data []byte) io.Action {
 	return func() error {
 		_, err := f.handle.Write(data)
 		if err != nil {
@@ -116,8 +121,8 @@ func (f *normalFile) Write(data []byte) io.Action {
 	}
 }
 
-// Write bytes to the file.
-func (f *normalFile) WriteBinary(order binary.ByteOrder, data interface{}) io.Action {
+// WriteBinary uses binary.Write to write and interface to the file.
+func (f *file) WriteBinary(order binary.ByteOrder, data interface{}) io.Action {
 	return func() error {
 		err := binary.Write(f.handle, order, data)
 		if err != nil {
@@ -127,8 +132,8 @@ func (f *normalFile) WriteBinary(order binary.ByteOrder, data interface{}) io.Ac
 	}
 }
 
-// WriteString to the file.
-func (f *normalFile) WriteString(data string) io.Action {
+// WriteString writes a string to the file.
+func (f *file) WriteString(data string) io.Action {
 	return func() error {
 		_, err := f.handle.WriteString(data)
 		if err != nil {
@@ -138,22 +143,19 @@ func (f *normalFile) WriteString(data string) io.Action {
 	}
 }
 
-// Seek in the file.
-func (f *normalFile) Seek(offset int64, whence int, new *int64) io.Action {
+// SeekTo a location in the file.
+func (f *file) SeekTo(offset int64) io.Action {
 	return func() error {
-		n, err := f.handle.Seek(offset, whence)
+		_, err := f.handle.Seek(offset, 0)
 		if err != nil {
-			return fmt.Errorf("could not seek to %v as %v in file %v: %v", offset, whence, f.path, err)
-		}
-		if new != nil {
-			*new = n
+			return fmt.Errorf("could not seek to %v in file %v: %v", offset, f.path, err)
 		}
 		return nil
 	}
 }
 
-// Read from the file.
-func (f *normalFile) Read(destination []byte) io.Action {
+// Read bytes from the file.
+func (f *file) Read(destination []byte) io.Action {
 	return func() error {
 		_, err := f.handle.Read(destination)
 		if err != nil {
@@ -163,8 +165,8 @@ func (f *normalFile) Read(destination []byte) io.Action {
 	}
 }
 
-// Read from the file.
-func (f *normalFile) ReadString(destination *string, length int) io.Action {
+// ReadString reads a string from the file.
+func (f *file) ReadString(destination *string, length int) io.Action {
 	buf := make([]byte, length)
 
 	return func() error {
@@ -178,7 +180,7 @@ func (f *normalFile) ReadString(destination *string, length int) io.Action {
 }
 
 // Ioctl execute an IOCTL command.
-func (f *normalFile) Ioctl(operation, argument uintptr) io.Action {
+func (f *file) Ioctl(operation, argument uintptr) io.Action {
 	return func() error {
 		if _, _, errno := unix.Syscall(unix.SYS_IOCTL, f.handle.Fd(), operation, argument); errno != 0 {
 			return fmt.Errorf("ioctl %v failed with handle %v and argument %v: %v", operation, f.handle.Fd(), argument, errno)

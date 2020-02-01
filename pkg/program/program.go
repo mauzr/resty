@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -34,25 +35,20 @@ import (
 	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
+// Program handles all the program commons.
 type Program struct {
-	Wg          *sync.WaitGroup
-	Ctx         context.Context
-	Cancel      func()
-	Hostname    *string
-	Rest        rest.REST
+	// Wg will be waited for before shutdown.
+	Wg *sync.WaitGroup
+	// Ctx will be canceled when shutdown is requested.
+	Ctx context.Context
+	// Cancel cancels Ctx.
+	Cancel func()
+	// ServiceName is the FQDN of this service.
+	ServiceName *string
+	// REST manager for everything
+	Rest rest.REST
+	// RootCommand for this service.
 	RootCommand *cobra.Command
-}
-
-func (p *Program) ApplyEnvsToFlags(flags *pflag.FlagSet, envsToFlags [][2]string) error {
-	for _, envToFlag := range envsToFlags {
-		flag, env := envToFlag[0], envToFlag[1]
-		if value, set := os.LookupEnv(env); set {
-			if err := flags.Set(flag, value); err != nil {
-				return fmt.Errorf("could not apply environment variable %v with value %v to flag %v: %v", env, value, flag, err)
-			}
-		}
-	}
-	return nil
 }
 
 func (p *Program) handleTerminationSignals() {
@@ -107,36 +103,34 @@ func listeners(hostname string, binds *[]string) []net.Listener {
 
 func New() *Program {
 	ctx, cancel := context.WithCancel(context.Background())
-
-	flags := pflag.FlagSet{}
-	flags.StringToStringP("tags", "", nil, "Tags to include in measurements")
-	binds := flags.StringSliceP("binds", "", nil, "Addresses to listen on")
-	hostname := flags.StringP("hostname", "", "", "Name of this service that is used to bind and pick TLS certificates")
-
 	program := &Program{
 		&sync.WaitGroup{},
 		ctx,
 		cancel,
-		hostname,
+		nil,
 		nil,
 		nil,
 	}
+
+	flags := pflag.FlagSet{}
+	flags.StringToStringP("tags", "", nil, "Tags to include in measurements")
+	binds := flags.StringSliceP("binds", "", nil, "Addresses to listen on")
+	program.ServiceName = flags.StringP("servicename", "", "", "Name of this service that is used to bind and pick TLS certificates")
 
 	rootCommand := cobra.Command{
 		Use:          "mauzr <subcommand>",
 		Short:        "Expose devices to the network",
 		SilenceUsage: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			err := program.ApplyEnvsToFlags(&flags, [][2]string{
-				{"tags", "MAUZR_TAGS"},
-				{"hostname", "MAUZR_HOSTNAME"},
-				{"binds", "MAUZR_BINDS"},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			cmd.Flags().VisitAll(func(f *pflag.Flag) {
+				env := "MAUZR_" + strings.ToUpper(f.Name)
+				if value, set := os.LookupEnv(env); set {
+					if err := f.Value.Set(value); err != nil {
+						panic(fmt.Errorf("could not apply environment variable %v with value %v to flag %v: %v", env, value, f.Name, err))
+					}
+				}
 			})
-			if err != nil {
-				return err
-			}
-			program.Rest = rest.New(*hostname, listeners(*hostname, binds))
-			return nil
+			program.Rest = rest.New(*program.ServiceName, listeners(*program.ServiceName, binds))
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			defer cancel()

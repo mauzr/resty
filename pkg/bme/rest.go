@@ -24,7 +24,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
-// setupHandler creates a http.Handler that handles BME680 measurements.
+// setupHandler creates a http handler that handles measurements with the given manager.
 func setupHandler(c rest.REST, manager Manager, tags map[string]string) {
 	c.Endpoint("/measurement", "", func(query *rest.Request) {
 		args := struct {

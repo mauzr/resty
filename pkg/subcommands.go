@@ -31,6 +31,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/tradfri"
 )
 
+// completeCmd adds shell completion program helpers.
 func completeCmd(p *program.Program) *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:       "completion <bash|zsh>",
@@ -50,6 +51,7 @@ func completeCmd(p *program.Program) *cobra.Command {
 	return cmd
 }
 
+// documentCmd add documentation generation program helpers.
 func documentCmd(p *program.Program) *cobra.Command {
 	var path string
 	var cmd = &cobra.Command{
@@ -81,6 +83,7 @@ func documentCmd(p *program.Program) *cobra.Command {
 	return cmd
 }
 
+// healthcheckCmd add the ability to check some other mauzr instance inside the same container.
 func healthcheckCmd(p *program.Program) *cobra.Command {
 	command := cobra.Command{
 		Use:   "healthcheck",

@@ -27,14 +27,16 @@ import (
 	"go.eqrx.net/mauzr/pkg/bme/common"
 )
 
+// Measurments represents a taken measurement.
 type Measurement = common.Measurement
 
+// Model represents a specific BME model
 type Model interface {
 	Measure(bus string, device uint16) (Measurement, error)
 	Reset(bus string, device uint16) error
 }
 
-// manager manages all functions of a chip
+// Manager manages all functions of a chip.
 type Manager struct {
 	model                   Model
 	bus                     string
@@ -44,9 +46,10 @@ type Manager struct {
 	requestedMeasurementAge chan time.Duration
 }
 
+// NewBME280Manager creates a manager for a BME280.
 func NewBME280Manager(bus string, address uint16) Manager {
 	return Manager{
-		bme280.NewModel(),
+		bme280.New(),
 		bus,
 		address,
 		Measurement{},
@@ -55,9 +58,10 @@ func NewBME280Manager(bus string, address uint16) Manager {
 	}
 }
 
+// NewBME280Manager creates a manager for a BME680.
 func NewBME680Manager(bus string, address uint16) Manager {
 	return Manager{
-		bme680.NewModel(),
+		bme680.New(),
 		bus,
 		address,
 		Measurement{},
@@ -66,7 +70,7 @@ func NewBME680Manager(bus string, address uint16) Manager {
 	}
 }
 
-// Measure the current air state.
+// Measure return a measurement that is not older than the given maximum age.
 func (m *Manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
 	for {
 		select {
@@ -90,6 +94,7 @@ func (m *Manager) Measure(ctx context.Context, maxAge time.Duration) (Measuremen
 	}
 }
 
+// reset resets the chip.
 func (m *Manager) reset(ctx context.Context) {
 	for {
 		if err := m.model.Reset(m.bus, m.device); err == nil {
@@ -112,6 +117,7 @@ func (m *Manager) reset(ctx context.Context) {
 	}
 }
 
+// run serves calls to the manager.
 func (m *Manager) run(ctx context.Context) {
 	var measurement Measurement
 
@@ -134,7 +140,7 @@ func (m *Manager) run(ctx context.Context) {
 	}
 }
 
-// Manage the chip.
+// Manage blocks and manages calls to the manager.
 func (m *Manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()

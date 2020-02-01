@@ -34,11 +34,6 @@ func SubCommand(p *program.Program) *cobra.Command {
 		Use:   "tradfri",
 		Short: "Expose tradfri LEDs behind a gateway",
 		Long:  "Expose tradfri LEDs behind a gateway via REST",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return p.ApplyEnvsToFlags(&flags, [][2]string{
-				{"client", "MAUZR_CLIENT"}, {"psk", "MAUZR_PSK"}, {"mapping", "MAUZR_MAPPING"}, {"gateway", "MAUZR_GATEWAY"},
-			})
-		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if *client == "" {
 				panic("Client ID must be set")

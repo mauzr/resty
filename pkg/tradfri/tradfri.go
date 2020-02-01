@@ -26,12 +26,14 @@ import (
 	coap "github.com/dustin/go-coap"
 )
 
+// setupKeys for the DTLS communication with the tradfri gateway.
 func setupKeys(client, psk string) {
 	mks := dtls.NewKeystoreInMemory()
 	dtls.SetKeyStores([]dtls.Keystore{mks})
 	mks.AddKey(client, []byte(psk))
 }
 
+// setupParams for the DTLS library
 func setupParams(client, gateway string) dtls.PeerParams {
 	return dtls.PeerParams{
 		Addr:             gateway + ":5684",
@@ -40,8 +42,10 @@ func setupParams(client, gateway string) dtls.PeerParams {
 	}
 }
 
+// light is the mapper from actual names of the devices to their path.
 type light map[string]int
 
+// apply the current setting to the gateway.
 func (c *light) apply(params dtls.PeerParams, group string) error {
 	rawChange, _ := json.Marshal(c)
 	req := coap.Message{
@@ -85,11 +89,13 @@ func (c *light) apply(params dtls.PeerParams, group string) error {
 	return err
 }
 
+// setLevel of light output of some blub.
 func (c light) setLevel(level float64) {
 	dim := int(math.Max(0.0, math.Min(level, 1.0)) * 254.0)
 	c["5851"] = dim
 }
 
+// setPower (on or off) of some bulb.
 func (c light) setPower(on bool) {
 	power := 0
 	if on {

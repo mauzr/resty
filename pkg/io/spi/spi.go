@@ -16,14 +16,73 @@ limitations under the License.
 
 package spi
 
-import "go.eqrx.net/mauzr/pkg/io"
+import (
+	"fmt"
+	"os"
+	"unsafe"
+
+	"go.eqrx.net/mauzr/pkg/io"
+	"go.eqrx.net/mauzr/pkg/io/file"
+)
 
 // Device represents a device behind an SPI bus.
 type Device interface {
+	// Open a connection to the device connection.
 	Open() io.Action
+	// Close the device connection.
 	Close() io.Action
+	// Exchange sends data to an SPI device while receiving the same amount of data.
 	Exchange(mosi []byte, miso []byte) io.Action
 }
 
-// NewDevice creates a new Device. this function can be overridden to mock the device.
-var NewDevice = newNormalDevice
+const (
+	ioctl = 0x40206b00
+)
+
+type operation struct {
+	txBuf       uint64 //nolint
+	rxBuf       uint64 //nolint
+	len         uint32 //nolint
+	speedHz     uint32 //nolint
+	delayUsecs  uint16 //nolint
+	bitsPerWord uint8  //nolint
+	csChange    uint8  //nolint
+	txNbits     uint8  //nolint
+	rxNbits     uint8  //nolint
+	pad         uint16 //nolint
+}
+
+type device struct {
+	file  file.File
+	speed uint32
+}
+
+// Open a connection to the device connection.
+func (d *device) Open() io.Action {
+	return d.file.Open(os.O_RDWR|os.O_SYNC, 0660)
+}
+
+// Close the device connection.
+func (d *device) Close() io.Action {
+	return d.file.Close()
+}
+
+// Exchange sends data to an SPI device while receiving the same amount of data.
+func (d *device) Exchange(mosi []byte, miso []byte) io.Action {
+	if len(mosi) != len(miso) {
+		panic(fmt.Sprintf("SPI MOSI and MISO arrays have different lengths (%v %v)/n", len(mosi), len(miso)))
+	}
+
+	arg := operation{
+		txBuf:   uint64(uintptr(unsafe.Pointer(&miso[0]))),
+		rxBuf:   uint64(uintptr(unsafe.Pointer(&mosi[0]))),
+		len:     uint32(len(mosi)),
+		speedHz: d.speed,
+	}
+	return d.file.Ioctl(ioctl, uintptr(unsafe.Pointer(&arg)))
+}
+
+// New creates an new SPI device.
+func New(path string) Device {
+	return &device{file: file.New(path)}
+}

@@ -28,11 +28,12 @@ import (
 	"go.eqrx.net/mauzr/pkg/io/file"
 )
 
+// fetchGpioBase returns the base memory address of the GPIO chip.
 func fetchGpioBase(base *uint32) io.Action {
 	return func() error {
-		f := file.NewFile("/proc/device-tree/soc/ranges")
+		f := file.New("/proc/device-tree/soc/ranges")
 		buffer := make([]byte, 4)
-		if err := io.Execute([]io.Action{f.Open(os.O_RDONLY, 0600), f.Seek(4, 0, nil), f.Read(buffer)}, []io.Action{f.Close()}); err != nil {
+		if err := io.Execute([]io.Action{f.Open(os.O_RDONLY, 0600), f.SeekTo(4), f.Read(buffer)}, []io.Action{f.Close()}); err != nil {
 			return fmt.Errorf("could not read GPIO memory range: %v", err)
 		}
 		if err := binary.Read(bytes.NewReader(buffer), binary.BigEndian, base); err != nil {
@@ -44,7 +45,7 @@ func fetchGpioBase(base *uint32) io.Action {
 }
 
 // Pull sets the pull up/down setting of the pin.
-func (p *normalPin) Pull(direction uint) func() error {
+func (p *pin) Pull(direction uint) func() error {
 	return func() error {
 		identifier, err := strconv.ParseUint(p.identifier, 10, 32)
 		if err != nil {

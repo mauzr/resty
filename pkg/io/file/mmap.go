@@ -35,16 +35,17 @@ type MemoryMap interface {
 
 // NewMemoryMap creates a new MMap handle for the given file path.
 func NewMemoryMap(path string) MemoryMap {
-	return &normalMemoryMap{file: NewFile(path)}
+	return &memoryMap{file: New(path)}
 }
 
-type normalMemoryMap struct {
+// memoryMap implements MemoryMap.
+type memoryMap struct {
 	file File
 	mmap []byte
 }
 
 // Close releases the memory mapping
-func (m *normalMemoryMap) Close() io.Action {
+func (m *memoryMap) Close() io.Action {
 	return func() error {
 		if err := m.file.Unmap(&m.mmap)(); err != nil {
 			return fmt.Errorf("could not unmap memory: %v", err)
@@ -54,7 +55,7 @@ func (m *normalMemoryMap) Close() io.Action {
 }
 
 // Open maps the file to memory
-func (m *normalMemoryMap) Open(offset int64, length int) io.Action {
+func (m *memoryMap) Open(offset int64, length int) io.Action {
 	return func() error {
 		actions := []io.Action{
 			m.file.Open(os.O_RDWR|os.O_SYNC, 0600),
@@ -67,7 +68,7 @@ func (m *normalMemoryMap) Open(offset int64, length int) io.Action {
 }
 
 // Uint32Register returns a slice the represents the map as uint32 array.
-func (m *normalMemoryMap) Uint32Register(destination *[]uint32) io.Action {
+func (m *memoryMap) Uint32Register(destination *[]uint32) io.Action {
 	return func() error {
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&m.mmap))
 		header.Len /= 4

@@ -25,7 +25,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
-// setupHandler provides a http.Handler that sets an SK6812 chain
+// setupHandler provides a REST handler that sets an SK6812 chain.
 func setupHandler(c rest.REST, strip Manager) {
 	c.Endpoint("/color", "", func(r *rest.Request) {
 		setting := make([]uint8, 0)

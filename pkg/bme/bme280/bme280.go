@@ -52,14 +52,17 @@ type calibrationInput struct {
 	H6     int8
 }
 
+// Model represents the specific BME280 model.
 type Model struct {
 	calibrations Calibrations
 }
 
-func NewModel() *Model {
+// New creates a new BME280 mode representation.
+func New() *Model {
 	return &Model{}
 }
 
+// Calibrations return the calibration data from the chip.
 func (m *Model) Calibrations() Calibrations {
 	return m.calibrations
 }
@@ -67,7 +70,7 @@ func (m *Model) Calibrations() Calibrations {
 // Reset resets the BME280 behind the given address and fetches the calibration.
 func (m *Model) Reset(bus string, address uint16) error {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf on how this works
-	device := i2c.NewDevice(bus, address)
+	device := i2c.New(bus, address)
 	var data [36]byte
 	actions := []io.Action{
 		device.Open(),
@@ -94,7 +97,7 @@ func (m *Model) Reset(bus string, address uint16) error {
 
 // Measure creates a measurement with the given BME280 behind the given address.
 func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) {
-	device := i2c.NewDevice(bus, address)
+	device := i2c.New(bus, address)
 	var reading [8]byte
 	actions := []io.Action{
 		device.Open(),

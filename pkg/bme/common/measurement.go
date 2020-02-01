@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-// Measurement contains the compensated measurements of a BME680 and its timestamp.
+// Measurement contains the compensated measurements of a BME680 and its timestamp and tags.
 type Measurement struct {
 	GasResistance float64           `json:"gas_resistance"`
 	Humidity      float64           `json:"humidity"`

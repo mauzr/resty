@@ -32,9 +32,6 @@ func SubCommand(p *program.Program) *cobra.Command {
 		Use:   "sk6812",
 		Short: "Expose a SK6812 strip",
 		Long:  "Expose a SK6812 driver via REST",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return p.ApplyEnvsToFlags(&flags, [][2]string{{"tty", "MAUZR_TTY"}})
-		},
 		Run: func(cmd *cobra.Command, args []string) {
 			strip := NewManager(*bus, *address)
 			setupHandler(p.Rest, strip)

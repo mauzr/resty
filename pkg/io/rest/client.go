@@ -24,20 +24,26 @@ import (
 	"net/http"
 )
 
+// Error with http specific information.
 type Error interface {
+	// Error returns the error as string.
 	Error() string
+	// StatusCode returns the http that caused the error.
 	StatusCode() int
 }
 
+// httpError implements error.
 type httpError struct {
 	statusCode int
 	cause      error
 }
 
+// StatusCode returns the http that caused the error.
 func (h httpError) StatusCode() int {
 	return h.statusCode
 }
 
+// Error returns the error as string.
 func (h httpError) Error() string {
 	switch {
 	case h.cause != nil:
@@ -49,6 +55,7 @@ func (h httpError) Error() string {
 	}
 }
 
+// GetRaw response from a remote site.
 func (r *rest) GetRaw(ctx context.Context, url string) (*http.Response, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -58,6 +65,7 @@ func (r *rest) GetRaw(ctx context.Context, url string) (*http.Response, error) {
 	return r.client.Do(request)
 }
 
+// GetJSON from a remote site. It gets serialized into the given interface.
 func (r *rest) GetJSON(ctx context.Context, url string, target interface{}) Error {
 	response, err := r.GetRaw(ctx, url)
 	if err != nil {
@@ -74,6 +82,7 @@ func (r *rest) GetJSON(ctx context.Context, url string, target interface{}) Erro
 	return nil
 }
 
+// PostRaw from the given reader to a remote site.
 func (r *rest) PostRaw(ctx context.Context, url string, body io.Reader) (*http.Response, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {

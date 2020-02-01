@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 )
 
+// loadCA from a file.
 func loadCA(caPath string) *x509.CertPool {
 	pool := x509.NewCertPool()
 	ca, err := ioutil.ReadFile(caPath)
@@ -35,14 +36,11 @@ func loadCA(caPath string) *x509.CertPool {
 	return pool
 }
 
+// loadCertificate from files.
 func loadCertificate(crtPath, keyPath string) tls.Certificate {
 	cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
 	if err != nil {
 		panic(fmt.Errorf("failed to load TLS cert/key pair from %v & %v: %v", crtPath, keyPath, err))
 	}
 	return cert
-}
-
-func (r *rest) ServerNames() []string {
-	return r.serverNames
 }

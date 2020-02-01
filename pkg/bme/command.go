@@ -35,9 +35,6 @@ func SubCommands(p *program.Program) []*cobra.Command {
 		Use:   "bme280 location=livingroom",
 		Short: "Expose a BME280 driver",
 		Long:  "Expose a BME280 driver via REST.",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return p.ApplyEnvsToFlags(&flags, [][2]string{{"bus", "MAUZR_BUS"}, {"address", "MAUZR_ADDRESS"}})
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tags, err := cmd.Root().PersistentFlags().GetStringToString("tags")
 			if err != nil {
@@ -57,9 +54,6 @@ func SubCommands(p *program.Program) []*cobra.Command {
 		Use:   "bme680 location=livingroom",
 		Short: "Expose a BME680 driver",
 		Long:  "Expose a BME680 driver via REST.",
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			return p.ApplyEnvsToFlags(&flags, [][2]string{{"bus", "MAUZR_BUS"}, {"address", "MAUZR_ADDRESS"}})
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tags, err := cmd.Root().PersistentFlags().GetStringToString("tags")
 			if err != nil {
