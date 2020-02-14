@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"io"
+	"net"
 	"net/http"
 	"time"
 )
@@ -37,16 +38,19 @@ type REST interface {
 type rest struct {
 	mux          *http.ServeMux
 	client       http.Client
+	listeners    []net.Listener
 	servers      []http.Server
 	serverErrors chan error
 	serverNames  []string
 }
 
-func New(hostname string, listenAddresses []string) REST {
+// New creates a new REST interface.
+func New(hostname string, listeners []net.Listener) REST {
 	rest := rest{
 		http.NewServeMux(),
 		http.Client{},
-		make([]http.Server, len(listenAddresses)),
+		listeners,
+		make([]http.Server, len(listeners)),
 		make(chan error),
 		nil,
 	}
@@ -73,10 +77,10 @@ func New(hostname string, listenAddresses []string) REST {
 		PreferServerCipherSuites: true,
 		ClientCAs:                loadCA("/etc/ssl/certs/" + hostname + "-ca.crt"),
 		Certificates:             []tls.Certificate{serverCertificate},
+		NextProtos:               []string{"h2"},
 	}
-	for i, listenAddress := range listenAddresses {
+	for i := range listeners {
 		rest.servers[i] = http.Server{
-			Addr:              listenAddress,
 			TLSConfig:         &tlsConfig,
 			ReadHeaderTimeout: 3 * time.Second,
 			IdleTimeout:       120 * time.Second,

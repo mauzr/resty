@@ -18,7 +18,9 @@ package rest
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
 	"time"
 
 	"net/http"
@@ -26,13 +28,14 @@ import (
 
 func (r *rest) Serve(ctx context.Context) error {
 	for i := range r.servers {
-		go func(server *http.Server) {
-			err := server.ListenAndServeTLS("", "")
+		go func(server *http.Server, listener *net.Listener) {
+			tlsListener := tls.NewListener(*listener, server.TLSConfig)
+			err := server.Serve(tlsListener)
 			if err != http.ErrServerClosed {
 				r.serverErrors <- err
 			}
 			r.serverErrors <- nil
-		}(&r.servers[i])
+		}(&r.servers[i], &r.listeners[i])
 	}
 	remaining := len(r.servers)
 	terminated := false

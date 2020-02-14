@@ -1,0 +1,10 @@
+[Unit]
+Description=Mauzr agent socket
+
+[Socket]
+FreeBind=yes
+ListenStream=[xxx]:443
+ListenStream=[yyy]:443
+
+[Install]
+WantedBy=sockets.target

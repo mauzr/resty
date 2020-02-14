@@ -19,10 +19,14 @@ package program
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -62,6 +66,45 @@ func (p *Program) handleTerminationSignals() {
 	}
 }
 
+func listeners(hostname string, binds *[]string) []net.Listener {
+	if pid, pidSet := os.LookupEnv("LISTEN_PID"); pidSet && strconv.Itoa(os.Getpid()) == pid {
+		os.Unsetenv("LISTEN_PID")
+		listenerCount, err := strconv.Atoi(os.Getenv("LISTEN_FDS"))
+		os.Unsetenv("LISTEN_FDS")
+		switch {
+		case err != nil:
+			panic(fmt.Errorf("LISTEN_PID is set but LISTEN_FDS is invalid: %v", err))
+		case listenerCount == 0:
+			panic(fmt.Errorf("LISTEN_PID is set but LISTEN_FDS is 0"))
+		}
+		restListeners := make([]net.Listener, listenerCount)
+		for i := range restListeners {
+			fd := i + 3
+			unix.CloseOnExec(fd)
+			listener, err := net.FileListener(os.NewFile(uintptr(fd), fmt.Sprintf("LISTEN_FD_%v", fd)))
+			if err != nil {
+				panic(fmt.Errorf("could not create file from fd: %v", err))
+			}
+			restListeners[i] = listener
+		}
+		return restListeners
+	}
+	addresses := []string{fmt.Sprintf("%s:443", hostname)}
+	if binds != nil {
+		addresses = *binds
+	}
+
+	restListeners := make([]net.Listener, len(addresses))
+	for i, address := range addresses {
+		l, err := net.Listen("tcp", address)
+		if err != nil {
+			panic(fmt.Errorf("could not listen: %v", err))
+		}
+		restListeners[i] = l
+	}
+	return restListeners
+}
+
 func New() *Program {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -92,10 +135,7 @@ func New() *Program {
 			if err != nil {
 				return err
 			}
-			if *binds == nil {
-				*binds = []string{fmt.Sprintf("%s:443", *hostname)}
-			}
-			program.Rest = rest.New(*hostname, *binds)
+			program.Rest = rest.New(*hostname, listeners(*hostname, binds))
 			return nil
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {

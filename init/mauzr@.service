@@ -1,6 +1,7 @@
 [Unit]
 After=network-online.target
 Description=Mauzr agent
+Requires=mauzr@%i.socket
 
 [Service]
 User=mauzr
@@ -9,3 +10,4 @@ ExecStart=/usr/bin/mauzr $MAUZR_DEVICE
 
 [Install]
 WantedBy=multi-user.target
+Also=mauzr@%i.socket
