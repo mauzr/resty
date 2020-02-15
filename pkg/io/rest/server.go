@@ -52,7 +52,7 @@ func (r *rest) Serve(ctx context.Context) error {
 			switch {
 			case err != nil:
 				errors = append(errors, err)
-			case !terminated:
+			case err == nil && !terminated:
 				panic(fmt.Errorf("server terminated error free without being asked so"))
 			case terminated:
 				continue
