@@ -46,3 +46,7 @@ build-image: build
 .PHONY: push-image
 push-image:
 	buildah manifest push --all $(IMAGE):$(GITTAG) docker://$(IMAGE):$(GITTAG)
+
+.PHONY: update
+update:
+	go get -t -u=patch ./...

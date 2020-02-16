@@ -31,10 +31,10 @@ func Feeder(ctx context.Context, wg *sync.WaitGroup, input strip.Input, bus stri
 
 	outputter := NewManager(bus, address)
 	subCtx, subCancel := context.WithCancel(ctx)
-	defer subCancel()
 	go StripToGRBWBytes(input, data)
 	go outputter.Manage(subCtx, wg)
 	go func() {
+		defer subCancel()
 		timer := time.NewTicker(time.Second / 10)
 		for {
 			<-timer.C
@@ -43,8 +43,8 @@ func Feeder(ctx context.Context, wg *sync.WaitGroup, input strip.Input, bus stri
 				return
 			}
 			if ctx.Err() == nil {
-				err := outputter.Set(ctx, data)
-				if err != nil && err != ctx.Err() {
+				err := outputter.Set(subCtx, data)
+				if err != nil && err != subCtx.Err() {
 					fmt.Printf("set error: %v", err)
 				}
 			}

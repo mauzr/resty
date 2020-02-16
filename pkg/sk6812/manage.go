@@ -59,6 +59,11 @@ func (m *manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		actions := []io.Action{
 			m.device.Open(),
 			func() error {
