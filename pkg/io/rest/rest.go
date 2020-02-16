@@ -101,6 +101,8 @@ func New(serviceName string, listeners []net.Listener) REST {
 			Handler:           rest.mux,
 		}
 	}
+
+	rest.Endpoint("/health", "I am alive!", func(query *Request) {})
 	return &rest
 }
 

@@ -50,6 +50,6 @@ func (f *flasher) Peek() []color.RGBW {
 // Pop the next generated color (Next invocation will return the next color).
 func (f *flasher) Pop() []color.RGBW {
 	new := f.Peek()
-	f.currentStep = (f.currentStep + 1) % f.length
+	f.currentStep = (f.currentStep + 1) % len(f.steps)
 	return new
 }
