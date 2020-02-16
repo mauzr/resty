@@ -34,7 +34,7 @@ func DefaultParts() map[string]sources.Loop {
 	return map[string]sources.Loop{
 		"off":     sources.NewStatic(color.Off),
 		"bright":  sources.NewStatic(color.Bright),
-		"alert":   sources.NewFadeLoop(color.Off.MixWith(0.1, color.Alert), color.Alert, transitionSteps),
+		"alert":   sources.NewFadeLoop(color.Off.MixWith(0.1, color.RGBW{Red: 1.0}), color.RGBW{Red: 1.0}, transitionSteps),
 		"rainbow": sources.NewRainbow(0.5),
 	}
 }

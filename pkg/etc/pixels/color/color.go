@@ -21,12 +21,10 @@ var (
 	Off = RGBW{}
 	// Bright sets the pixel to as bright as possible.
 	Bright = RGBW{White: 1.0}
-	// Unhealthy indicates that something is wrong.
-	Unhealthy = RGBW{Red: 1.0}
 	// Unmanaged indicates that the pixel is not actively managed.
-	Unmanaged = Unhealthy
-	// Alert indicates that something needs user attention.
-	Alert = Unhealthy
+	Unmanaged = RGBW{Red: 1.0}
+	// Unhealthy indicates that something is wrong.
+	Unhealthy = Off.MixWith(0.1, RGBW{Red: 1.0})
 	// Healthy indicated that everything is fine.
-	Healthy = RGBW{Green: 1.0}
+	Healthy = Off.MixWith(0.1, RGBW{Green: 1.0})
 )
