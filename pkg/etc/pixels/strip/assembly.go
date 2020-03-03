@@ -53,7 +53,7 @@ func (a *assembly) Check(end Input) {
 		}
 	}
 	if len(loose) != 1 {
-		panic(fmt.Errorf("strips %s goes into nothing", loose))
+		panic(fmt.Errorf("strips %s go into nothing", loose))
 	}
 	if loose[0] != end.Name() {
 		panic(fmt.Errorf("assembly should end in %s, but ends in %s", loose[0], end.Name()))

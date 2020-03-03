@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	modeForm = `
+	PartChangeForm = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -48,7 +48,7 @@ const (
 
 // AddPartChangerEndpoint that will listen for part change requests.
 func AddPartChangerEndpoint(c rest.REST, path string, changers ...Changer) {
-	c.Endpoint(path, modeForm, func(query *rest.Request) {
+	c.Endpoint(path, PartChangeForm, func(query *rest.Request) {
 		args := struct {
 			Stance string `json:"stance"`
 		}{}

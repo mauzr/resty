@@ -47,11 +47,12 @@ type loopCommon struct {
 
 // SetLength of the target pixel strip. May be called only once.
 func (c *loopCommon) SetLength(length int) {
-	if c.length != 0 {
+	switch {
+	case c.length != 0:
 		panic("reused source")
-	}
-	if length == 0 {
+	case length == 0:
 		panic("zero length")
+	default:
+		c.length = length
 	}
-	c.length = length
 }

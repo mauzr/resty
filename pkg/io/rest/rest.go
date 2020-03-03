@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -102,7 +103,7 @@ func New(serviceName string, listeners []net.Listener) REST {
 		}
 	}
 
-	rest.Endpoint("/health", "I am alive!", func(query *Request) {})
+	rest.Endpoint("/health", "I am alive!", func(r *Request) { r.RequestError = fmt.Errorf("no arguments supported") })
 	return &rest
 }
 

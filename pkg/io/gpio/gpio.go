@@ -64,6 +64,7 @@ type pin struct {
 }
 
 // New creates a new pin.
+// See /sys/kernel/debug/gpio for the pin number when using mainline.
 func New(identifier string) Pin {
 	return &pin{
 		identifier:    identifier,
