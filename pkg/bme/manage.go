@@ -72,6 +72,9 @@ func NewBME680Manager(bus string, address uint16) Manager {
 
 // Measure return a measurement that is not older than the given maximum age.
 func (m *Manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
+	if maxAge == 0 {
+		panic(fmt.Errorf("maxAge may not be 0"))
+	}
 	for {
 		select {
 		case measurement, ok := <-m.latestMeasurement:

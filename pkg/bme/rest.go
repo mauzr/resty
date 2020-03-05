@@ -28,14 +28,17 @@ import (
 func setupHandler(c rest.REST, manager Manager, tags map[string]string) {
 	c.Endpoint("/measurement", "", func(query *rest.Request) {
 		args := struct {
-			MaxAge time.Duration `json:"maxAge,string"`
+			MaxAge int `json:"maxAge,string"`
 		}{}
 		if err := query.Args(&args); err != nil {
 			return
 		}
+		if args.MaxAge < 1 {
+			args.MaxAge = 10
+		}
 		measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, 3*time.Second)
 		defer measureCtxCancel()
-		if measurement, err := manager.Measure(measureCtx, args.MaxAge); err != nil {
+		if measurement, err := manager.Measure(measureCtx, time.Duration(args.MaxAge)*time.Second); err != nil {
 			query.InternalError = err
 		} else {
 			measurement.Tags = tags

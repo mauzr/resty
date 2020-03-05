@@ -52,7 +52,7 @@ var (
 	}
 	// calibrationResult is the calibration data expected to be generated from the memory dump.
 	calibrationResult = bme680.Calibrations{
-		bme680.GasCalibration{-34, -7920, 18, 1},
+		bme680.GasCalibration{-34, -7920, 18, 1, 1, 45},
 		bme680.HumidityCalibration{717, 1022, 0, 45, 20, 120, -100},
 		bme680.PressureCalibration{34731, -10373, 88, 4083, 121, 30, 12, 1014, -4096, 30},
 		bme680.TemperatureCalibration{26511, 26148, 3},

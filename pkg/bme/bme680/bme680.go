@@ -64,11 +64,12 @@ type calibrationInput struct {
 // Model represents the specific BME280 model.
 type Model struct {
 	calibrations Calibrations
+	last         common.Measurement
 }
 
 // New creates a new BME280 mode representation.
 func New() *Model {
-	return &Model{}
+	return &Model{last: common.Measurement{Temperature: 21}}
 }
 
 // Calibrations return the calibration data from the cip.
@@ -76,33 +77,48 @@ func (m *Model) Calibrations() Calibrations {
 	return m.calibrations
 }
 
+func (m *Model) setupGas(device i2c.Device) func() error {
+	return func() error {
+		target := uint8(3.4 * (((((float64(m.calibrations.Gas.G1)/16.0)+49.0)*(1.0+((((float64(m.calibrations.Gas.G2)/32768.0)*0.0005)+0.00235)*300)) + (float64(m.calibrations.Gas.G3) / 1024.0 * m.last.Temperature)) * (4.0 / (4.0 + float64(m.calibrations.Gas.HeatRange))) * (1.0 / (1.0 + (float64(m.calibrations.Gas.HeatValue) * 0.002)))) - 25))
+		return device.Write([]byte{0x5a, target})()
+	}
+}
+
 // Reset resets the BME680 behind the given address and fetches the calibration.
 func (m *Model) Reset(bus string, address uint16) error {
 	device := i2c.New(bus, address)
 	var data [42]byte
-	var swError [1]byte
+	var extraData [5]byte
 	actions := []io.Action{
 		device.Open(),
 		device.Write([]byte{0xe0, 0xb6}),
-		io.Sleep(2 * time.Millisecond),
+		io.Sleep(100 * time.Millisecond),
 		device.WriteRead([]byte{0x89}, data[0:25]),
 		device.WriteRead([]byte{0xe1}, data[25:41]),
-		device.WriteRead([]byte{0x04}, swError[:]),
+		device.WriteRead([]byte{0x00}, extraData[:]),
+		func() error {
+			var input calibrationInput
+			if err := binary.Read(bytes.NewReader(data[:]), binary.LittleEndian, &input); err != nil {
+				panic(err)
+			}
+			m.calibrations = Calibrations{
+				GasCalibration{input.G1, input.G2, input.G3, extraData[4] >> 4, (extraData[2] & 0b00110000) >> 4, extraData[0]},
+				HumidityCalibration{uint16(input.H1)<<4 | (uint16(input.MIDDLE) & 0xf), uint16(input.H2)<<4 | uint16(input.MIDDLE)>>4, input.H3, input.H4, input.H5, input.H6, input.H7},
+				PressureCalibration{input.P1, input.P2, input.P3, input.P4, input.P5, input.P6, input.P7, input.P8, input.P9, input.P10},
+				TemperatureCalibration{input.T1, input.T2, input.T3},
+			}
+			return nil
+		},
+		device.Write([]byte{0x72, 0b00000101, 0b10110101}),
+		device.Write([]byte{0x64, 0x59}),
+		m.setupGas(device),
+		device.Write([]byte{0x71, 0b00010000}),
+		device.Write([]byte{0x75, 0b00010000}),
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
 		return fmt.Errorf("could not reset chip: %v", err)
 	}
 
-	var input calibrationInput
-	if err := binary.Read(bytes.NewReader(data[:]), binary.LittleEndian, &input); err != nil {
-		panic(err)
-	}
-	m.calibrations = Calibrations{
-		GasCalibration{input.G1, input.G2, input.G3, swError[0] / 16},
-		HumidityCalibration{uint16(input.H1)<<4 | (uint16(input.MIDDLE) & 0xf), uint16(input.H2)<<4 | uint16(input.MIDDLE)>>4, input.H3, input.H4, input.H5, input.H6, input.H7},
-		PressureCalibration{input.P1, input.P2, input.P3, input.P4, input.P5, input.P6, input.P7, input.P8, input.P9, input.P10},
-		TemperatureCalibration{input.T1, input.T2, input.T3},
-	}
 	return nil
 }
 
@@ -111,9 +127,9 @@ func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) 
 	device := i2c.New(bus, address)
 	var reading [15]byte
 	actions := []io.Action{
-		device.Write([]byte{0xe0, 0xb6}),
-		io.Sleep(2 * time.Millisecond),
-		device.Write([]byte{0x74, 0x01}),
+		device.Open(),
+		m.setupGas(device),
+		device.Write([]byte{0x74, 0b10110101}),
 		io.Sleep(500 * time.Millisecond),
 		device.WriteRead([]byte{0x1d}, reading[:]),
 		func() error {
@@ -124,7 +140,7 @@ func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) 
 		},
 	}
 	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
-		return common.Measurement{}, fmt.Errorf("could not reset chip: %v", err)
+		return common.Measurement{}, fmt.Errorf("could not read measurement: %v", err)
 	}
 
 	pReading := uint32(reading[2])<<12 | uint32(reading[3])<<4 | uint32(reading[4])>>16

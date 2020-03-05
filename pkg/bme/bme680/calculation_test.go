@@ -72,7 +72,7 @@ func TestPressureCompensation(t *testing.T) {
 
 // TestGasCompensation tests the BME680 gas resistance compensation isolated.
 func TestGasCompensation(t *testing.T) {
-	gc := bme680.GasCalibration{-34, -7920, 18, 1}
+	gc := bme680.GasCalibration{-34, -7920, 18, 1, 1, 45}
 	var target float64 = 243687
 	var reading uint16 = 537
 	var gasRange uint8 = 5

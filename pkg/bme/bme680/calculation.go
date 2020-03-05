@@ -59,10 +59,12 @@ type HumidityCalibration struct {
 
 // GasCalibration is used to compensate gas resistance readings of the BME680.
 type GasCalibration struct {
-	G1      int8  // 25
-	G2      int16 // 24
-	G3      int8  // 26
-	SWError uint8
+	G1        int8  // 25
+	G2        int16 // 24
+	G3        int8  // 26
+	SWError   uint8
+	HeatRange uint8
+	HeatValue uint8
 }
 
 // Calibrations contains all required calibrations for the chip.
