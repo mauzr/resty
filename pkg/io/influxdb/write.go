@@ -30,7 +30,7 @@ import (
 // Measurement is a sample set that need to be stored in an influxdb.
 type Measurement struct {
 	Name      string
-	Tags      map[string]interface{}
+	Tags      map[string]string
 	Fields    map[string]interface{}
 	Timestamp time.Time
 }
@@ -46,22 +46,21 @@ type client struct {
 	token       string
 }
 
-// prepareMap converts an map into a string suitable for the line protocol.
-func prepareMap(input map[string]interface{}) string {
-	sets := make([]string, 0, len(input))
-	for key, value := range input {
-		sets = append(sets, fmt.Sprintf("%s=%v", key, value))
-	}
-	return strings.Join(sets, ",")
-}
-
 // Line returns the measurement as line protocol string.
 func (m Measurement) Line() string {
 	timestamp := m.Timestamp
 	if timestamp.IsZero() {
 		timestamp = time.Now()
 	}
-	return fmt.Sprintf("%s,%s %s %v", m.Name, prepareMap(m.Tags), prepareMap(m.Fields), timestamp.UnixNano())
+	tags := make([]string, 0, len(m.Tags))
+	for key, value := range m.Tags {
+		tags = append(tags, fmt.Sprintf("%s=%v", key, value))
+	}
+	fields := make([]string, 0, len(m.Fields))
+	for key, value := range m.Fields {
+		fields = append(fields, fmt.Sprintf("%s=%v", key, value))
+	}
+	return fmt.Sprintf("%s,%s %s %v", m.Name, strings.Join(tags, ","), strings.Join(fields, ","), timestamp.UnixNano())
 }
 
 // New creates a new influxdb client.
