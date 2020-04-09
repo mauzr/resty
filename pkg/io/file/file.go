@@ -183,7 +183,7 @@ func (f *file) ReadString(destination *string, length int) io.Action {
 func (f *file) Ioctl(operation, argument uintptr) io.Action {
 	return func() error {
 		if _, _, errno := unix.Syscall(unix.SYS_IOCTL, f.handle.Fd(), operation, argument); errno != 0 {
-			return fmt.Errorf("ioctl %v failed with handle %v and argument %v: %v", operation, f.handle.Fd(), argument, errno)
+			return fmt.Errorf("ioctl %v failed with handle %v: %v", operation, f.handle.Name(), errno)
 		}
 		return nil
 	}

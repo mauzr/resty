@@ -21,59 +21,45 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
-	"time"
 
 	"net/http"
 )
 
 // Serve blocks and runs the configured http servers.
-func (r *rest) Serve(ctx context.Context) error {
+func (r *rest) Serve() []<-chan error {
+	if len(r.servers) != len(r.listeners) {
+		panic(fmt.Errorf("length of servers and listeners ist different"))
+	}
+	if len(r.servers) == 0 {
+		panic(fmt.Errorf("no servers specified"))
+	}
+	// TODO: Error seems to be dropped if IP is not available with systemd socket? server just returns
+	errors := make([]<-chan error, len(r.servers))
 	for i := range r.servers {
-		go func(server *http.Server, listener *net.Listener) {
+		err := make(chan error)
+		go func(server *http.Server, listener *net.Listener, errs chan<- error) {
 			tlsListener := tls.NewListener(*listener, server.TLSConfig)
-			err := server.Serve(tlsListener)
-			if err != http.ErrServerClosed {
-				r.serverErrors <- err
+			if err := server.Serve(tlsListener); err != http.ErrServerClosed {
+				errs <- err
 			}
-			r.serverErrors <- nil
-		}(&r.servers[i], &r.listeners[i])
+			close(errs)
+		}(&r.servers[i], &r.listeners[i], err)
 	}
-	remaining := len(r.servers)
-	terminated := false
-	errors := []error{}
-	for remaining != 0 {
-		select {
-		case <-ctx.Done():
-			if terminated {
-				continue
-			}
-		case err := <-r.serverErrors:
-			remaining--
-			switch {
-			case err != nil:
-				errors = append(errors, err)
-			case err == nil && !terminated:
-				panic(fmt.Errorf("server terminated error free without being asked so"))
-			case terminated:
-				continue
-			}
-		}
+	shutdownErrors := make(chan error)
+	go func() {
+		<-r.webserverContext.Done()
 		for i := range r.servers {
-			httpCtx, httpCancel := context.WithTimeout(context.Background(), 3*time.Second)
-			if err := r.servers[i].Shutdown(httpCtx); err != nil {
-				errors = append(errors, err)
+			err := r.servers[i].Shutdown(context.Background())
+			if err != nil {
+				shutdownErrors <- err
 			}
-			httpCancel()
 		}
-		terminated = true
-	}
+		close(shutdownErrors)
+	}()
 
-	switch len(errors) {
-	case 0:
-		return nil
-	case 1:
-		return errors[0]
-	default:
-		return fmt.Errorf("multiple webservers failed :%v", errors)
-	}
+	return append(errors, shutdownErrors)
+}
+
+func (r *rest) WebserverContext() context.Context {
+	return r.webserverContext
 }

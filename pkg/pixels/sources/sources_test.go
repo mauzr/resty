@@ -14,21 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package sources_test
 
-import (
-	"fmt"
-	"os"
-
-	"go.eqrx.net/mauzr/pkg"
-	"go.eqrx.net/mauzr/pkg/program"
-)
-
-func main() {
-	p := program.New()
-	pkg.SetupCommands(p)
-
-	if err := p.RootCommand.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-}
+const benchmarkStripLength = 11

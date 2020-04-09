@@ -24,6 +24,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"time"
 )
 
@@ -38,31 +39,44 @@ type REST interface {
 	// Endpoint provides a server end point for a rest application. The given handler is called on each invoction.
 	Endpoint(path, form string, queryHandler func(query *Request))
 	// Serve blocks and runs the configured http servers.
-	Serve(context.Context) error
+	Serve() []<-chan error
 	// AddDefaultResponseHeader to the given header.
 	AddDefaultResponseHeader(http.Header)
 	// ServerNames that are being served by this interface.
 	ServerNames() []string
+
+	WebserverContext() context.Context
+
+	Mux() *http.ServeMux
+	Client() *http.Client
 }
 
 // rest is the implementation of the REST interface.
 type rest struct {
-	mux          *http.ServeMux
-	client       http.Client
-	listeners    []net.Listener
-	servers      []http.Server
-	serverErrors chan error
-	serverNames  []string
+	webserverContext context.Context
+	mux              *http.ServeMux
+	client           http.Client
+	listeners        []net.Listener
+	servers          []http.Server
+	serverNames      []string
+}
+
+func (r *rest) Client() *http.Client {
+	return &r.client
+}
+
+func (r *rest) Mux() *http.ServeMux {
+	return r.mux
 }
 
 // New creates a new REST interface.
-func New(serviceName string, listeners []net.Listener) REST {
+func New(ctx context.Context, serviceName string, listeners []net.Listener) REST {
 	rest := rest{
+		ctx,
 		http.NewServeMux(),
 		http.Client{},
 		listeners,
 		make([]http.Server, len(listeners)),
-		make(chan error),
 		nil,
 	}
 	rest.client = http.Client{
@@ -102,8 +116,13 @@ func New(serviceName string, listeners []net.Listener) REST {
 			Handler:           rest.mux,
 		}
 	}
-
+	rest.mux.HandleFunc("/debug/pprof/", pprof.Index)
+	rest.mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	rest.mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	rest.mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	rest.mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 	rest.Endpoint("/health", "I am alive!", func(r *Request) { r.RequestError = fmt.Errorf("no arguments supported") })
+
 	return &rest
 }
 

@@ -2,6 +2,7 @@
 After=network-online.target
 Description=Mauzr agent
 Requires=mauzr@%i.socket
+After=mauzr@%i.socket
 
 [Service]
 User=mauzr

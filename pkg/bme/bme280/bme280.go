@@ -54,12 +54,13 @@ type calibrationInput struct {
 
 // Model represents the specific BME280 model.
 type Model struct {
+	device       i2c.Device
 	calibrations Calibrations
 }
 
 // New creates a new BME280 mode representation.
-func New() *Model {
-	return &Model{}
+func New(bus string, address uint16) *Model {
+	return &Model{i2c.New(bus, address), Calibrations{}}
 }
 
 // Calibrations return the calibration data from the chip.
@@ -68,18 +69,17 @@ func (m *Model) Calibrations() Calibrations {
 }
 
 // Reset resets the BME280 behind the given address and fetches the calibration.
-func (m *Model) Reset(bus string, address uint16) error {
+func (m *Model) Reset() error {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf on how this works
-	device := i2c.New(bus, address)
 	var data [36]byte
 	actions := []io.Action{
-		device.Open(),
-		device.Write([]byte{0xe0, 0xb6}),
+		m.device.Open(),
+		m.device.Write(0xe0, 0xb6),
 		io.Sleep(2 * time.Millisecond),
-		device.WriteRead([]byte{0x88}, data[0:26]),
-		device.WriteRead([]byte{0xe1}, data[26:35]),
+		m.device.WriteRead([]byte{0x88}, data[0:26]),
+		m.device.WriteRead([]byte{0xe1}, data[26:35]),
 	}
-	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
+	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
 		return fmt.Errorf("could not reset chip: %v", err)
 	}
 
@@ -96,17 +96,16 @@ func (m *Model) Reset(bus string, address uint16) error {
 }
 
 // Measure creates a measurement with the given BME280 behind the given address.
-func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) {
-	device := i2c.New(bus, address)
+func (m *Model) Measure() (common.Measurement, error) {
 	var reading [8]byte
 	actions := []io.Action{
-		device.Open(),
-		device.Write([]byte{0xf4, 0x3f}),
-		device.Write([]byte{0xf2, 0x01}),
-		device.Write([]byte{0xf4, 0x25}),
-		device.WriteRead([]byte{0xf7}, reading[:]),
+		m.device.Open(),
+		m.device.Write(0xf4, 0x3f),
+		m.device.Write(0xf2, 0x01),
+		m.device.Write(0xf4, 0x25),
+		m.device.WriteRead([]byte{0xf7}, reading[:]),
 	}
-	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
+	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
 		return common.Measurement{}, fmt.Errorf("could not read measurement from chip: %v", err)
 	}
 

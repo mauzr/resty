@@ -27,7 +27,6 @@ import (
 	"github.com/spf13/cobra/doc"
 	"go.eqrx.net/mauzr/pkg/bme"
 	"go.eqrx.net/mauzr/pkg/program"
-	"go.eqrx.net/mauzr/pkg/sk6812"
 	"go.eqrx.net/mauzr/pkg/tradfri"
 )
 
@@ -118,7 +117,6 @@ func SetupCommands(p *program.Program) {
 		documentCmd(p),
 		completeCmd(p),
 		healthcheckCmd(p),
-		sk6812.SubCommand(p),
 		tradfri.SubCommand(p),
 	}
 	subCommands = append(subCommands, bme.SubCommands(p)...)

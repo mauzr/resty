@@ -32,7 +32,7 @@ type Device interface {
 	// Close the connection to the device.
 	Close() io.Action
 	// Write to an I2C device.
-	Write(source []byte) io.Action
+	Write(source ...byte) io.Action
 	// WriteRead execute an I2C write followed by a read in the same transaction.
 	WriteRead(source []byte, destination []byte) io.Action
 }
@@ -97,7 +97,7 @@ func (d *device) WriteRead(source []byte, destination []byte) io.Action {
 }
 
 // Write to an I2C device.
-func (d *device) Write(source []byte) io.Action {
+func (d *device) Write(source ...byte) io.Action {
 	return func() error {
 		parts := []operation{
 			{addr: d.address, flags: 0, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},

@@ -61,9 +61,9 @@ var (
 	measurementResult = common.Measurement{GasResistance: 2898707, Humidity: 63, Pressure: 101304.8, Temperature: 25.4}
 )
 
-func (m MeasurementMock) Write(data []byte) io.Action { return io.NoOperation }
-func (m MeasurementMock) Open() io.Action             { return io.NoOperation }
-func (m MeasurementMock) Close() io.Action            { return io.NoOperation }
+func (m MeasurementMock) Write(data ...byte) io.Action { return io.NoOperation }
+func (m MeasurementMock) Open() io.Action              { return io.NoOperation }
+func (m MeasurementMock) Close() io.Action             { return io.NoOperation }
 
 // WriteRead returns data from the given array.
 func (m MeasurementMock) WriteRead(source []byte, destination []byte) io.Action {
@@ -78,9 +78,11 @@ func (m MeasurementMock) WriteRead(source []byte, destination []byte) io.Action 
 
 // TestCalibrationReadout tests if the driver reads BME680 calibration data correctly.
 func TestCalibrationReadout(test *testing.T) {
+	bus := ""
+	address := uint16(0)
 	i2c.New = func(bus string, address uint16) i2c.Device { return measureMock }
-	model := bme680.New()
-	if err := model.Reset("", 0); err == nil {
+	model := bme680.New(bus, address)
+	if err := model.Reset(); err == nil {
 		cal := model.Calibrations()
 		if cal != calibrationResult {
 			test.Errorf("Reset(\"\", 0) provides calibration %v, expected %v", cal, calibrationResult)
@@ -92,18 +94,20 @@ func TestCalibrationReadout(test *testing.T) {
 
 // setupMeasurementTesting creates a fake measurement.
 func setupMeasurementTesting() common.Measurement {
+	bus := ""
+	address := uint16(0)
 	i2c.New = func(bus string, address uint16) i2c.Device {
 		measureMock[0x1d] |= 0x80
 		return measureMock
 	}
-	model := bme680.New()
+	model := bme680.New(bus, address)
 
-	err := model.Reset("", 0)
+	err := model.Reset()
 	if err != nil {
 		panic(err)
 	}
 
-	m, err := model.Measure("", 0)
+	m, err := model.Measure()
 	if err != nil {
 		panic(err)
 	}

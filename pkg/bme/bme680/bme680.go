@@ -63,13 +63,14 @@ type calibrationInput struct {
 
 // Model represents the specific BME280 model.
 type Model struct {
+	device       i2c.Device
 	calibrations Calibrations
 	last         common.Measurement
 }
 
 // New creates a new BME280 mode representation.
-func New() *Model {
-	return &Model{last: common.Measurement{Temperature: 21}}
+func New(bus string, address uint16) *Model {
+	return &Model{i2c.New(bus, address), Calibrations{}, common.Measurement{Temperature: 21}}
 }
 
 // Calibrations return the calibration data from the cip.
@@ -77,25 +78,24 @@ func (m *Model) Calibrations() Calibrations {
 	return m.calibrations
 }
 
-func (m *Model) setupGas(device i2c.Device) func() error {
+func (m *Model) setupGas() func() error {
 	return func() error {
 		target := uint8(3.4 * (((((float64(m.calibrations.Gas.G1)/16.0)+49.0)*(1.0+((((float64(m.calibrations.Gas.G2)/32768.0)*0.0005)+0.00235)*300)) + (float64(m.calibrations.Gas.G3) / 1024.0 * m.last.Temperature)) * (4.0 / (4.0 + float64(m.calibrations.Gas.HeatRange))) * (1.0 / (1.0 + (float64(m.calibrations.Gas.HeatValue) * 0.002)))) - 25))
-		return device.Write([]byte{0x5a, target})()
+		return m.device.Write(0x5a, target)()
 	}
 }
 
 // Reset resets the BME680 behind the given address and fetches the calibration.
-func (m *Model) Reset(bus string, address uint16) error {
-	device := i2c.New(bus, address)
+func (m *Model) Reset() error {
 	var data [42]byte
 	var extraData [5]byte
 	actions := []io.Action{
-		device.Open(),
-		device.Write([]byte{0xe0, 0xb6}),
+		m.device.Open(),
+		m.device.Write(0xe0, 0xb6),
 		io.Sleep(100 * time.Millisecond),
-		device.WriteRead([]byte{0x89}, data[0:25]),
-		device.WriteRead([]byte{0xe1}, data[25:41]),
-		device.WriteRead([]byte{0x00}, extraData[:]),
+		m.device.WriteRead([]byte{0x89}, data[0:25]),
+		m.device.WriteRead([]byte{0xe1}, data[25:41]),
+		m.device.WriteRead([]byte{0x00}, extraData[:]),
 		func() error {
 			var input calibrationInput
 			if err := binary.Read(bytes.NewReader(data[:]), binary.LittleEndian, &input); err != nil {
@@ -109,13 +109,13 @@ func (m *Model) Reset(bus string, address uint16) error {
 			}
 			return nil
 		},
-		device.Write([]byte{0x72, 0b00000101, 0b10110101}),
-		device.Write([]byte{0x64, 0x59}),
-		m.setupGas(device),
-		device.Write([]byte{0x71, 0b00010000}),
-		device.Write([]byte{0x75, 0b00010000}),
+		m.device.Write(0x72, 0b00000101, 0b10110101),
+		m.device.Write(0x64, 0x59),
+		m.setupGas(),
+		m.device.Write(0x71, 0b00010000),
+		m.device.Write(0x75, 0b00010000),
 	}
-	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
+	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
 		return fmt.Errorf("could not reset chip: %v", err)
 	}
 
@@ -123,15 +123,14 @@ func (m *Model) Reset(bus string, address uint16) error {
 }
 
 // Measure creates a measurement with the given BME680 behind the given address.
-func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) {
-	device := i2c.New(bus, address)
+func (m *Model) Measure() (common.Measurement, error) {
 	var reading [15]byte
 	actions := []io.Action{
-		device.Open(),
-		m.setupGas(device),
-		device.Write([]byte{0x74, 0b10110101}),
+		m.device.Open(),
+		m.setupGas(),
+		m.device.Write(0x74, 0b10110101),
 		io.Sleep(500 * time.Millisecond),
-		device.WriteRead([]byte{0x1d}, reading[:]),
+		m.device.WriteRead([]byte{0x1d}, reading[:]),
 		func() error {
 			if reading[0]&0x80 == 0x00 {
 				return fmt.Errorf("sensor was not ready on readout")
@@ -139,7 +138,7 @@ func (m *Model) Measure(bus string, address uint16) (common.Measurement, error) 
 			return nil
 		},
 	}
-	if err := io.Execute(actions, []io.Action{device.Close()}); err != nil {
+	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
 		return common.Measurement{}, fmt.Errorf("could not read measurement: %v", err)
 	}
 

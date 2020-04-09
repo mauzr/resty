@@ -17,9 +17,7 @@ limitations under the License.
 package bme
 
 import (
-	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/bme/bme280"
@@ -30,131 +28,66 @@ import (
 // Measurments represents a taken measurement.
 type Measurement = common.Measurement
 
-// Model represents a specific BME model
-type Model interface {
-	Measure(bus string, device uint16) (Measurement, error)
-	Reset(bus string, device uint16) error
+type Chip interface {
+	Measure() (Measurement, error)
+	Reset() error
 }
 
-// Manager manages all functions of a chip.
-type Manager struct {
-	model                   Model
-	bus                     string
-	device                  uint16
-	measurement             Measurement
-	latestMeasurement       chan Measurement
-	requestedMeasurementAge chan time.Duration
+type Response struct {
+	Measurement Measurement
+	Err         error
 }
 
-// NewBME280Manager creates a manager for a BME280.
-func NewBME280Manager(bus string, address uint16) Manager {
-	return Manager{
-		bme280.New(),
-		bus,
-		address,
-		Measurement{},
-		make(chan Measurement),
-		make(chan time.Duration),
-	}
+type Request struct {
+	Response chan<- Response
+	MaxAge   time.Time
 }
 
-// NewBME280Manager creates a manager for a BME680.
-func NewBME680Manager(bus string, address uint16) Manager {
-	return Manager{
-		bme680.New(),
-		bus,
-		address,
-		Measurement{},
-		make(chan Measurement),
-		make(chan time.Duration),
-	}
-}
-
-// Measure return a measurement that is not older than the given maximum age.
-func (m *Manager) Measure(ctx context.Context, maxAge time.Duration) (Measurement, error) {
-	if maxAge == 0 {
-		panic(fmt.Errorf("maxAge may not be 0"))
-	}
-	for {
-		select {
-		case measurement, ok := <-m.latestMeasurement:
+func New(chip Chip, requests <-chan Request) {
+	go func() {
+		isReady := false
+		var lastMeasurement *Measurement
+		for {
+			request, ok := <-requests
 			switch {
 			case !ok:
-				return Measurement{}, fmt.Errorf("management routine canceled")
-			case time.Since(measurement.Timestamp) < maxAge:
-				return measurement, nil
-			default:
-				select {
-				case <-ctx.Done():
-					return Measurement{}, ctx.Err()
-				case m.requestedMeasurementAge <- maxAge:
+				return
+			case cap(request.Response) < 1:
+				close(request.Response)
+				panic(fmt.Errorf("received blocking channel for response"))
+			}
+
+			if lastMeasurement != nil && lastMeasurement.Timestamp.After(request.MaxAge) {
+				request.Response <- Response{*lastMeasurement, nil}
+				close(request.Response)
+				continue
+			}
+
+			if !isReady {
+				if err := chip.Reset(); err != nil {
+					request.Response <- Response{Measurement{}, err}
+					close(request.Response)
 					continue
 				}
+				isReady = true
 			}
-		case <-ctx.Done():
-			return Measurement{}, ctx.Err()
-		}
-	}
-}
 
-// reset resets the chip.
-func (m *Manager) reset(ctx context.Context) {
-	for {
-		if err := m.model.Reset(m.bus, m.device); err == nil {
-			break
-		} else {
-			fmt.Printf("reset failed: %v\n", err)
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.NewTimer(10 * time.Second).C:
-			continue
-		}
-	}
-	select {
-	case <-ctx.Done():
-		return
-	case <-time.NewTimer(3 * time.Second).C:
-	}
-}
-
-// run serves calls to the manager.
-func (m *Manager) run(ctx context.Context) {
-	var measurement Measurement
-
-	for {
-		select {
-		case maxAge := <-m.requestedMeasurementAge:
-			if time.Since(measurement.Timestamp) >= maxAge {
-				if newMeasurment, err := m.model.Measure(m.bus, m.device); err == nil {
-					m.measurement = newMeasurment
-				} else {
-					fmt.Printf("measurement failed: %v\n", err)
-					return
-				}
+			if measurement, err := chip.Measure(); err == nil {
+				lastMeasurement = &measurement
+				request.Response <- Response{measurement, nil}
+			} else {
+				request.Response <- Response{Measurement{}, err}
+				isReady = false
 			}
-		case m.latestMeasurement <- m.measurement:
-			continue
-		case <-ctx.Done():
-			return
+			close(request.Response)
 		}
-	}
+	}()
 }
 
-// Manage blocks and manages calls to the manager.
-func (m *Manager) Manage(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done()
-	defer close(m.latestMeasurement)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			m.reset(ctx)
-			m.run(ctx)
-		}
-	}
+func NewBME280(bus string, address uint16, requests <-chan Request) {
+	New(bme280.New(bus, address), requests)
+}
+
+func NewBME680(bus string, address uint16, requests <-chan Request) {
+	New(bme680.New(bus, address), requests)
 }

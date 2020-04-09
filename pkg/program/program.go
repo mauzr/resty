@@ -24,45 +24,32 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
-	"syscall"
 
 	"golang.org/x/sys/unix"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"go.eqrx.net/mauzr/pkg/io/errors"
 	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
 // Program handles all the program commons.
 type Program struct {
-	// Wg will be waited for before shutdown.
-	Wg *sync.WaitGroup
 	// Ctx will be canceled when shutdown is requested.
 	Ctx context.Context
-	// Cancel cancels Ctx.
-	Cancel func()
+
+	Errors []<-chan error
+
 	// ServiceName is the FQDN of this service.
 	ServiceName *string
-	// REST manager for everything
+	// REST manager for everything.
 	Rest rest.REST
 	// RootCommand for this service.
 	RootCommand *cobra.Command
 }
 
-func (p *Program) handleTerminationSignals() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGTERM)
-	signal.Notify(c, syscall.SIGINT)
-	select {
-	case <-c:
-		p.Cancel()
-	case <-p.Ctx.Done():
-	}
-}
-
-func listeners(hostname string, binds *[]string) []net.Listener {
+func listeners(binds []string) []net.Listener {
 	if pid, pidSet := os.LookupEnv("LISTEN_PID"); pidSet && strconv.Itoa(os.Getpid()) == pid {
 		os.Unsetenv("LISTEN_PID")
 		listenerCount, err := strconv.Atoi(os.Getenv("LISTEN_FDS"))
@@ -85,13 +72,9 @@ func listeners(hostname string, binds *[]string) []net.Listener {
 		}
 		return restListeners
 	}
-	addresses := []string{fmt.Sprintf("%s:443", hostname)}
-	if binds != nil {
-		addresses = *binds
-	}
 
-	restListeners := make([]net.Listener, len(addresses))
-	for i, address := range addresses {
+	restListeners := make([]net.Listener, len(binds))
+	for i, address := range binds {
 		l, err := net.Listen("tcp", address)
 		if err != nil {
 			panic(fmt.Errorf("could not listen: %v", err))
@@ -102,11 +85,11 @@ func listeners(hostname string, binds *[]string) []net.Listener {
 }
 
 func New() *Program {
-	ctx, cancel := context.WithCancel(context.Background())
+	runtimeCtx, programCancel := context.WithCancel(context.Background())
+	webserverCtx, webserverCancel := context.WithCancel(runtimeCtx)
 	program := &Program{
-		&sync.WaitGroup{},
-		ctx,
-		cancel,
+		runtimeCtx,
+		[]<-chan error{},
 		nil,
 		nil,
 		nil,
@@ -130,19 +113,41 @@ func New() *Program {
 					}
 				}
 			})
-			program.Rest = rest.New(*program.ServiceName, listeners(*program.ServiceName, binds))
+			program.Rest = rest.New(webserverCtx, *program.ServiceName, listeners(*binds))
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			defer cancel()
 			if cmd.Name() == "help" {
+				webserverCancel()
+				programCancel()
 				return nil
 			}
-			err := program.Rest.Serve(ctx)
-			return err
+
+			runtimeErrorSource := errors.Merge(webserverCancel, program.Errors...)
+			webserverErrorSource := errors.Merge(webserverCancel, program.Rest.Serve()...)
+			webserverErrorSink := make(chan error)
+			go func() {
+				c := make(chan os.Signal, 1)
+				signal.Notify(c, os.Interrupt)
+				<-c
+				webserverCancel()
+			}()
+			go func() {
+				defer close(webserverErrorSink)
+				defer programCancel()
+				for {
+					err, ok := <-webserverErrorSource
+					if !ok {
+						return
+					}
+					webserverErrorSink <- err
+				}
+			}()
+
+			return errors.Collect(errors.Merge(nil, runtimeErrorSource, webserverErrorSource))
 		},
 	}
 	rootCommand.PersistentFlags().AddFlagSet(&flags)
 	program.RootCommand = &rootCommand
-	go program.handleTerminationSignals()
+
 	return program
 }

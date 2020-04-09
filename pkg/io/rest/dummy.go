@@ -44,7 +44,7 @@ func (d dummy) ServerNames() []string { return nil }
 func (d dummy) AddDefaultResponseHeader(http.Header) {}
 
 // Serve blocks and runs the configured http servers.
-func (d dummy) Serve(context.Context) error { return nil }
+func (d dummy) Serve() []<-chan error { return nil }
 
 // Endpoint provides a server end point for a rest application. The given handler is called on each invoction.
 func (d dummy) Endpoint(path, form string, queryHandler func(query *Request)) {}
@@ -61,6 +61,12 @@ func (d dummy) GetRaw(context.Context, string) (*http.Response, error) {
 func (d dummy) PostRaw(context.Context, string, io.Reader) (*http.Response, error) {
 	return &http.Response{Body: &BodyDummy{}}, nil
 }
+
+func (d dummy) WebserverContext() context.Context { return context.Background() }
+
+func (d dummy) Mux() *http.ServeMux { return nil }
+
+func (d dummy) Client() *http.Client { return nil }
 
 // NewDummy creates a new dummy REST interface.
 func NewDummy() REST {

@@ -41,9 +41,14 @@ func SubCommands(p *program.Program) []*cobra.Command {
 				return err
 			}
 
-			manager := NewBME280Manager(*bus, *address)
-			setupHandler(p.Rest, manager, tags)
-			go manager.Manage(p.Ctx, p.Wg)
+			requests := make(chan Request)
+			go func() {
+				<-p.Rest.WebserverContext().Done()
+				close(requests)
+			}()
+
+			NewBME280(*bus, *address, requests)
+			setupHandler(p.Rest, requests, tags)
 
 			return nil
 		},
@@ -60,10 +65,14 @@ func SubCommands(p *program.Program) []*cobra.Command {
 				return err
 			}
 
-			manager := NewBME680Manager(*bus, *address)
-			setupHandler(p.Rest, manager, tags)
-			go manager.Manage(p.Ctx, p.Wg)
+			requests := make(chan Request)
+			go func() {
+				<-p.Rest.WebserverContext().Done()
+				close(requests)
+			}()
 
+			NewBME680(*bus, *address, requests)
+			setupHandler(p.Rest, requests, tags)
 			return nil
 		},
 	}

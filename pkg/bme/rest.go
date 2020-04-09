@@ -19,30 +19,52 @@ package bme
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
 // setupHandler creates a http handler that handles measurements with the given manager.
-func setupHandler(c rest.REST, manager Manager, tags map[string]string) {
+func setupHandler(c rest.REST, requests chan<- Request, tags map[string]string) {
 	c.Endpoint("/measurement", "", func(query *rest.Request) {
 		args := struct {
-			MaxAge int `json:"maxAge,string"`
+			MaxAge string `json:"maxAge"`
 		}{}
 		if err := query.Args(&args); err != nil {
 			return
 		}
-		if args.MaxAge < 1 {
-			args.MaxAge = 10
+		maxAge, err := time.ParseDuration(args.MaxAge)
+		if err != nil {
+			query.RequestError = err
+			return
 		}
+
+		responses := make(chan Response, 1)
+		request := Request{responses, time.Now().Add(-maxAge)}
+
 		measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, 3*time.Second)
 		defer measureCtxCancel()
-		if measurement, err := manager.Measure(measureCtx, time.Duration(args.MaxAge)*time.Second); err != nil {
-			query.InternalError = err
-		} else {
-			measurement.Tags = tags
-			query.ResponseBody, query.InternalError = json.Marshal(measurement)
+
+		select {
+		case <-measureCtx.Done():
+			query.InternalError = measureCtx.Err()
+			return
+		case requests <- request:
+		}
+		select {
+		case <-measureCtx.Done():
+			query.InternalError = measureCtx.Err()
+		case response, ok := <-responses:
+			switch {
+			case !ok:
+				panic(fmt.Errorf("unknown internal error"))
+			case response.Err != nil:
+				query.InternalError = err
+			default:
+				response.Measurement.Tags = tags
+				query.ResponseBody, query.InternalError = json.Marshal(response.Measurement)
+			}
 		}
 	})
 }
