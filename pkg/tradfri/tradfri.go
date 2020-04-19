@@ -19,88 +19,101 @@ package tradfri
 import (
 	"encoding/json"
 	"fmt"
-	"math"
+	"math/rand"
 	"time"
 
 	"github.com/bocajim/dtls"
 	coap "github.com/dustin/go-coap"
 )
 
-// setupKeys for the DTLS communication with the tradfri gateway.
-func setupKeys(client, psk string) {
+const identityLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func login(address, identity, key string) (psk string, err error) {
+	listener, err := dtls.NewUdpListener(":0", time.Second*900)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err := listener.Shutdown(); err != nil {
+			panic(err)
+		}
+	}()
+	loginIdentity := "Client_identity"
 	mks := dtls.NewKeystoreInMemory()
 	dtls.SetKeyStores([]dtls.Keystore{mks})
-	mks.AddKey(client, []byte(psk))
+	mks.AddKey(loginIdentity, []byte(key))
+	loginPeer, err := listener.AddPeerWithParams(&dtls.PeerParams{Addr: address, Identity: loginIdentity, HandshakeTimeout: time.Second * 15})
+	if err != nil {
+		return
+	}
+	loginPeer.UseQueue(true)
+
+	pskPayload := struct {
+		Ident string `json:"9090"`
+	}{Ident: identity}
+	pskData, err := json.Marshal(pskPayload)
+	if err != nil {
+		return
+	}
+	pskRequest := coap.Message{Type: coap.Confirmable, Code: coap.POST, MessageID: 0, Payload: pskData}
+	pskRequest.SetPath([]string{"15011", "9063"})
+	pskBinary, err := pskRequest.MarshalBinary()
+	if err != nil {
+		return
+	}
+	if err = loginPeer.Write(pskBinary); err != nil {
+		return
+	}
+
+	pskResponseBinary, err := loginPeer.Read(time.Second)
+	if err != nil {
+		return
+	}
+	pskMessage, err := coap.ParseMessage(pskResponseBinary)
+	if err != nil {
+		return
+	}
+	if pskMessage.Code != coap.Created {
+		err = fmt.Errorf("invalid return code: %v", pskMessage.Code)
+		return
+	}
+	pskResp := struct {
+		PSK string `json:"9091"`
+	}{}
+	err = json.Unmarshal(pskMessage.Payload, &pskResp)
+	if err != nil {
+		panic(err)
+	}
+	psk = pskResp.PSK
+
+	return psk, err
 }
 
-// setupParams for the DTLS library
-func setupParams(client, gateway string) dtls.PeerParams {
-	return dtls.PeerParams{
-		Addr:             gateway + ":5684",
-		Identity:         client,
-		HandshakeTimeout: time.Second * 15,
+func connect(address, key string) (peer *dtls.Peer, err error) {
+	rand.Seed(time.Now().UnixNano())
+	identity := ""
+	for i := 0; i < 8; i++ {
+		identity += string(identityLetters[rand.Intn(len(identityLetters))])
 	}
-}
-
-// light is the mapper from actual names of the devices to their path.
-type light map[string]int
-
-// apply the current setting to the gateway.
-func (c *light) apply(params dtls.PeerParams, group string) error {
-	rawChange, _ := json.Marshal(c)
-	req := coap.Message{
-		Type:    coap.Confirmable,
-		Code:    coap.PUT,
-		Payload: rawChange,
-	}
-	req.SetPath([]string{"15004", group})
-
-	listener, err := dtls.NewUdpListener(":0", 15*time.Second)
+	psk, err := login(address, identity, key)
 	if err != nil {
-		return err
+		return
 	}
 
-	peer, err := listener.AddPeerWithParams(&params)
+	mks := dtls.NewKeystoreInMemory()
+	dtls.SetKeyStores([]dtls.Keystore{mks})
+	mks.AddKey(identity, []byte(psk))
+
+	listener, err := dtls.NewUdpListener(":0", time.Second*900)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
+	peerParams := &dtls.PeerParams{Addr: address, Identity: identity, HandshakeTimeout: time.Second * 15}
+	peer, err = listener.AddPeerWithParams(peerParams)
+	if err != nil {
+		return
+	}
 	peer.UseQueue(true)
-
-	rawRequest, err := req.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	if err = peer.Write(rawRequest); err != nil {
-		return err
-	}
-
-	rawResponse, err := peer.Read(time.Second)
-	if err != nil {
-		return err
-	}
-
-	response, err := coap.ParseMessage(rawResponse)
-	if err == nil && response.Code != coap.Changed {
-		err = fmt.Errorf("unexpected CoAP code: %s", response.Code)
-	}
-
-	return err
-}
-
-// setLevel of light output of some blub.
-func (c light) setLevel(level float64) {
-	dim := int(math.Max(0.0, math.Min(level, 1.0)) * 254.0)
-	c["5851"] = dim
-}
-
-// setPower (on or off) of some bulb.
-func (c light) setPower(on bool) {
-	power := 0
-	if on {
-		power = 1
-	}
-
-	c["5850"] = power
+	return
 }

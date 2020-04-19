@@ -25,8 +25,7 @@ import (
 // SubCommand creates a cobra command for this driver.
 func SubCommand(p *program.Program) *cobra.Command {
 	flags := pflag.FlagSet{}
-	client := flags.StringP("client", "c", "", "Client ID to use")
-	psk := flags.StringP("psk", "p", "", "PSK to use")
+	key := flags.StringP("key", "k", "", "Key to use")
 	gateway := flags.StringP("gateway", "g", "", "Gateway to use")
 	mapping := flags.StringToStringP("mapping", "m", nil, "Name to device ID mapping")
 
@@ -34,18 +33,16 @@ func SubCommand(p *program.Program) *cobra.Command {
 		Use:   "tradfri",
 		Short: "Expose tradfri LEDs behind a gateway",
 		Long:  "Expose tradfri LEDs behind a gateway via REST",
-		Run: func(cmd *cobra.Command, args []string) {
-			if *client == "" {
-				panic("Client ID must be set")
+		RunE: func(cmd *cobra.Command, args []string) error {
+			peer, err := connect(*gateway+":5684", *key)
+			if err != nil {
+				return err
 			}
-			if *psk == "" {
-				panic("PSK must be set")
-			}
-			setupKeys(*client, *psk)
-			params := setupParams(*client, *gateway)
+
 			for name, group := range *mapping {
-				setupMapping(p.Rest, name, group, params)
+				handleLamp(p.Rest, name, group, peer)
 			}
+			return nil
 		},
 	}
 	command.Flags().AddFlagSet(&flags)

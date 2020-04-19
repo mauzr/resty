@@ -17,7 +17,13 @@ limitations under the License.
 package tradfri
 
 import (
+	"encoding/json"
+	"fmt"
+	"math"
+	"time"
+
 	"github.com/bocajim/dtls"
+	coap "github.com/dustin/go-coap"
 	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
@@ -39,24 +45,65 @@ const (
 `
 )
 
-// setupMapping for incoming rest calls to calls to the tradfri gateway.
-func setupMapping(c rest.REST, name, group string, params dtls.PeerParams) {
+func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 	c.Endpoint("/"+name, form, func(query *rest.Request) {
 		args := struct {
 			Power *bool    `json:"power,string"`
 			Level *float64 `json:"level,string"`
 		}{}
-
 		if err := query.Args(&args); err != nil {
 			return
 		}
-		change := light{}
-		if args.Power != nil {
-			change.setPower(*args.Power)
+		if args.Power == nil && args.Level == nil {
+			query.RequestError = fmt.Errorf("nothing requested")
 		}
-		if args.Level != nil {
-			change.setLevel(*args.Level)
+
+		request := map[string]int{}
+		switch {
+		case args.Power == nil:
+		case *args.Power:
+			request["5850"] = 1
+		case !*args.Power:
+			request["5850"] = 0
 		}
-		query.InternalError = change.apply(params, group)
+
+		switch {
+		case args.Level == nil:
+		default:
+			request["5851"] = int(math.Max(0.0, math.Min(*args.Level, 1.0)) * 254.0)
+		}
+
+		rawChange, err := json.Marshal(&request)
+		if err != nil {
+			panic(err)
+		}
+		req := coap.Message{
+			Type:      coap.Confirmable,
+			Code:      coap.PUT,
+			Payload:   rawChange,
+			MessageID: 1,
+		}
+		req.SetPath([]string{"15004", group})
+		rawRequest, err := req.MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+
+		if err = peer.Write(rawRequest); err != nil {
+			query.GatewayError = err
+			return
+		}
+
+		rawResponse, err := peer.Read(10 * time.Second)
+		if err != nil {
+			query.GatewayError = err
+			return
+		}
+
+		response, err := coap.ParseMessage(rawResponse)
+		if err == nil && response.Code != coap.Changed {
+			query.GatewayError = fmt.Errorf("unexpected CoAP code: %s", response.Code)
+			return
+		}
 	})
 }
