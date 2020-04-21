@@ -57,9 +57,9 @@ func createLut() ([][]byte, int) {
 		for dataBitPosition := 0; dataBitPosition < 8; dataBitPosition++ {
 			dataBit := dataByte&(1<<dataBitPosition) != 0
 			if dataBit {
-				translation |= 0b11111000 << (dataBitPosition * 8)
+				translation |= 0b11110000 << ((7 - dataBitPosition) * 8)
 			} else {
-				translation |= 0b11000000 << (dataBitPosition * 8)
+				translation |= 0b11000000 << ((7 - dataBitPosition) * 8)
 			}
 		}
 		lut[dataByte] = make([]byte, translationFactor)
@@ -105,7 +105,7 @@ func New(input strip.Input, path string, framerate int) <-chan error {
 			arg := operation{
 				txBuf:   uint64(uintptr(unsafe.Pointer(&translated[0]))),
 				len:     uint32(len(translated)),
-				speedHz: 16000000,
+				speedHz: 19000000,
 			}
 			err := f.Ioctl(0x40206b00, uintptr(unsafe.Pointer(&arg)))()
 			if err != nil {

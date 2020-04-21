@@ -30,6 +30,10 @@ func SubCommands(p *program.Program) []*cobra.Command {
 	if err := cobra.MarkFlagFilename(&flags, "bus"); err != nil {
 		panic(err)
 	}
+	goff := flags.Float64P("goff", "", 0.0, "Gas resistance offset to apply to measurements")
+	hoff := flags.Float64P("hoff", "", 0.0, "Humidity offset to apply to measurements")
+	poff := flags.Float64P("poff", "", 0.0, "Pressure offset to apply to measurements")
+	toff := flags.Float64P("toff", "", 0.0, "Temperature offset to apply to measurements")
 
 	bme280 := cobra.Command{
 		Use:   "bme280 location=livingroom",
@@ -47,7 +51,7 @@ func SubCommands(p *program.Program) []*cobra.Command {
 				close(requests)
 			}()
 
-			NewBME280(*bus, *address, requests)
+			NewBME280(*bus, *address, Measurement{GasResistance: *goff, Humidity: *hoff, Pressure: *poff, Temperature: *toff}, requests)
 			setupHandler(p.Rest, requests, tags)
 
 			return nil
@@ -71,7 +75,7 @@ func SubCommands(p *program.Program) []*cobra.Command {
 				close(requests)
 			}()
 
-			NewBME680(*bus, *address, requests)
+			NewBME680(*bus, *address, Measurement{GasResistance: *goff, Humidity: *hoff, Pressure: *poff, Temperature: *toff}, requests)
 			setupHandler(p.Rest, requests, tags)
 			return nil
 		},

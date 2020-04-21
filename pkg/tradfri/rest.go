@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"time"
 
 	"github.com/bocajim/dtls"
 	coap "github.com/dustin/go-coap"
@@ -78,7 +77,7 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 			panic(err)
 		}
 		req := coap.Message{
-			Type:      coap.Confirmable,
+			Type:      coap.NonConfirmable,
 			Code:      coap.PUT,
 			Payload:   rawChange,
 			MessageID: 1,
@@ -91,18 +90,6 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 
 		if err = peer.Write(rawRequest); err != nil {
 			query.GatewayError = err
-			return
-		}
-
-		rawResponse, err := peer.Read(10 * time.Second)
-		if err != nil {
-			query.GatewayError = err
-			return
-		}
-
-		response, err := coap.ParseMessage(rawResponse)
-		if err == nil && response.Code != coap.Changed {
-			query.GatewayError = fmt.Errorf("unexpected CoAP code: %s", response.Code)
 			return
 		}
 	})

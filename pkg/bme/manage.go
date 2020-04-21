@@ -43,7 +43,7 @@ type Request struct {
 	MaxAge   time.Time
 }
 
-func New(chip Chip, requests <-chan Request) {
+func New(chip Chip, offsets Measurement, requests <-chan Request) {
 	go func() {
 		isReady := false
 		var lastMeasurement *Measurement
@@ -73,6 +73,10 @@ func New(chip Chip, requests <-chan Request) {
 			}
 
 			if measurement, err := chip.Measure(); err == nil {
+				measurement.Temperature += offsets.Temperature
+				measurement.Humidity += offsets.Humidity
+				measurement.GasResistance += offsets.GasResistance
+				measurement.Pressure += offsets.Pressure
 				lastMeasurement = &measurement
 				request.Response <- Response{measurement, nil}
 			} else {
@@ -84,10 +88,10 @@ func New(chip Chip, requests <-chan Request) {
 	}()
 }
 
-func NewBME280(bus string, address uint16, requests <-chan Request) {
-	New(bme280.New(bus, address), requests)
+func NewBME280(bus string, address uint16, offsets Measurement, requests <-chan Request) {
+	New(bme280.New(bus, address), offsets, requests)
 }
 
-func NewBME680(bus string, address uint16, requests <-chan Request) {
-	New(bme680.New(bus, address), requests)
+func NewBME680(bus string, address uint16, offsets Measurement, requests <-chan Request) {
+	New(bme680.New(bus, address), offsets, requests)
 }

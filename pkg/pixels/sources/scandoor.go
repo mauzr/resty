@@ -50,7 +50,7 @@ func (s *scanDoor) Setup(length int, framerate int) {
 	if length != 11 {
 		panic(fmt.Errorf("strip length must be 11"))
 	}
-	s.change = 0.05 * 1.0 / float64(framerate)
+	s.change = 0.3 / float64(framerate)
 }
 
 // Peer the next generated color (Next invocation will return the same color).
@@ -58,8 +58,7 @@ func (s *scanDoor) Peek() []color.RGBW {
 	new := make([]color.RGBW, 11)
 	for i, pixel := range s.positions {
 		relativedistance := math.Abs(pixel[1]-s.position) / s.maxHeight
-		factor := math.Min(relativedistance*2, 1.0)
-		new[i] = s.lower.MixWith(factor, s.upper)
+		new[i] = s.lower.MixWith(math.Max(0.0, math.Min(relativedistance, 1.0)), s.upper)
 	}
 
 	return new
