@@ -44,21 +44,15 @@ func (r *rainbow) Setup(length int, framerate int) {
 		panic(fmt.Errorf("zero length"))
 	}
 	r.length = length
-	r.speed = time.Second.Seconds() / (r.cycleDuration.Seconds() * float64(framerate))
+	r.speed = 1 / (r.cycleDuration.Seconds() * float64(framerate))
 }
 
 // Peer the next generated color (Next invocation will return the same color).
 func (r *rainbow) Peek() []color.RGBW {
 	new := make([]color.RGBW, r.length)
-	current := 0.0
 	step := 1.0 / float64(r.length)
-	for i := int(r.offset) % r.length; i < r.length; i++ {
-		new[i] = color.HSV{Hue: current - math.Floor(current), Saturation: 1, Value: 1}.RGBW()
-		current += step
-	}
-	for i := 0; i < int(r.offset)%r.length; i++ {
-		new[i] = color.HSV{Hue: current - math.Floor(current), Saturation: 1, Value: 1}.RGBW()
-		current += step
+	for i := range new {
+		new[i] = color.HSV{Hue: math.Mod(float64(i)*step+r.offset, 1.0), Saturation: 1, Value: 1}.RGBW()
 	}
 
 	return new
