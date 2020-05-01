@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/bocajim/dtls"
 	coap "github.com/dustin/go-coap"
@@ -45,7 +46,17 @@ const (
 )
 
 func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
-	c.Endpoint("/"+name, form, func(query *rest.Request) {
+	mutex := sync.Mutex{}
+	lastPower := false
+	c.Endpoint(fmt.Sprintf("/%s/status", name), "", func(query *rest.Request) {
+		mutex.Lock()
+		query.ResponseBody = []byte("off")
+		if lastPower {
+			query.ResponseBody = []byte("on")
+		}
+		mutex.Unlock()
+	})
+	c.Endpoint(fmt.Sprintf("/%s", name), form, func(query *rest.Request) {
 		args := struct {
 			Power *bool    `json:"power,string"`
 			Level *float64 `json:"level,string"`
@@ -55,6 +66,9 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 		}
 		if args.Power == nil && args.Level == nil {
 			query.RequestError = fmt.Errorf("nothing requested")
+		}
+		if args.Level != nil {
+			*args.Level = math.Max(0.0, math.Min(*args.Level, 1.0)) * 254.0
 		}
 
 		request := map[string]int{}
@@ -69,19 +83,14 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 		switch {
 		case args.Level == nil:
 		default:
-			request["5851"] = int(math.Max(0.0, math.Min(*args.Level, 1.0)) * 254.0)
+			request["5851"] = int(*args.Level)
 		}
 
 		rawChange, err := json.Marshal(&request)
 		if err != nil {
 			panic(err)
 		}
-		req := coap.Message{
-			Type:      coap.NonConfirmable,
-			Code:      coap.PUT,
-			Payload:   rawChange,
-			MessageID: 1,
-		}
+		req := coap.Message{Type: coap.NonConfirmable, Code: coap.PUT, Payload: rawChange, MessageID: 1}
 		req.SetPath([]string{"15004", group})
 		rawRequest, err := req.MarshalBinary()
 		if err != nil {
@@ -92,5 +101,10 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 			query.GatewayError = err
 			return
 		}
+		mutex.Lock()
+		if args.Power != nil {
+			lastPower = *args.Power
+		}
+		mutex.Unlock()
 	})
 }
