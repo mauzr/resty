@@ -68,7 +68,7 @@ func (f *file) Open(flags int, mask os.FileMode) io.Action {
 	return func() error {
 		h, err := os.OpenFile(f.path, flags, mask)
 		if err != nil {
-			return fmt.Errorf("could not not open file %v with flags %v and mask %v: %v", f.path, flags, mask, err)
+			return fmt.Errorf("could not not open file %v with flags %v and mask %v: %w", f.path, flags, mask, err)
 		}
 		f.handle = h
 		return nil
@@ -80,7 +80,7 @@ func (f *file) Unmap(memoryMap *[]byte) io.Action {
 	return func() error {
 		defer func() { *memoryMap = nil }()
 		if err := unix.Munmap(*memoryMap); err != nil {
-			return fmt.Errorf("could not unmap memory: %v", err)
+			return fmt.Errorf("could not unmap memory: %w", err)
 		}
 		return nil
 	}
@@ -92,7 +92,7 @@ func (f *file) Map(offset int64, length, prot, flags int, memoryMap *[]byte) io.
 		if mmem, err := unix.Mmap(int(f.handle.Fd()), offset, length, prot, flags); err == nil {
 			*memoryMap = mmem
 		} else {
-			return fmt.Errorf("could not map memory: %v", err)
+			return fmt.Errorf("could not map memory: %w", err)
 		}
 		return nil
 	}
@@ -104,7 +104,7 @@ func (f *file) Close() io.Action {
 		err := f.handle.Close()
 		f.handle = nil
 		if err != nil {
-			return fmt.Errorf("could not not close file %v: %v", f.path, err)
+			return fmt.Errorf("could not not close file %v: %w", f.path, err)
 		}
 		return nil
 	}
@@ -115,7 +115,7 @@ func (f *file) Write(data []byte) io.Action {
 	return func() error {
 		_, err := f.handle.Write(data)
 		if err != nil {
-			return fmt.Errorf("could not write %v to file %v: %v", data, f.path, err)
+			return fmt.Errorf("could not write %v to file %v: %w", data, f.path, err)
 		}
 		return nil
 	}
@@ -126,7 +126,7 @@ func (f *file) WriteBinary(order binary.ByteOrder, data interface{}) io.Action {
 	return func() error {
 		err := binary.Write(f.handle, order, data)
 		if err != nil {
-			return fmt.Errorf("could not binary write %v to file %v: %v", data, f.path, err)
+			return fmt.Errorf("could not binary write %v to file %v: %w", data, f.path, err)
 		}
 		return nil
 	}
@@ -137,7 +137,7 @@ func (f *file) WriteString(data string) io.Action {
 	return func() error {
 		_, err := f.handle.WriteString(data)
 		if err != nil {
-			return fmt.Errorf("could not write %v to file %v: %v", data, f.path, err)
+			return fmt.Errorf("could not write %v to file %v: %w", data, f.path, err)
 		}
 		return nil
 	}
@@ -148,7 +148,7 @@ func (f *file) SeekTo(offset int64) io.Action {
 	return func() error {
 		_, err := f.handle.Seek(offset, 0)
 		if err != nil {
-			return fmt.Errorf("could not seek to %v in file %v: %v", offset, f.path, err)
+			return fmt.Errorf("could not seek to %v in file %v: %w", offset, f.path, err)
 		}
 		return nil
 	}
@@ -159,7 +159,7 @@ func (f *file) Read(destination []byte) io.Action {
 	return func() error {
 		_, err := f.handle.Read(destination)
 		if err != nil {
-			return fmt.Errorf("could not read #%v from file %v: %v", len(destination), f.path, err)
+			return fmt.Errorf("could not read #%v from file %v: %w", len(destination), f.path, err)
 		}
 		return nil
 	}
@@ -172,7 +172,7 @@ func (f *file) ReadString(destination *string, length int) io.Action {
 	return func() error {
 		err := f.Read(buf)()
 		if err != nil {
-			return fmt.Errorf("could not read #%v from file %v: %v", length, f.path, err)
+			return fmt.Errorf("could not read #%v from file %v: %w", length, f.path, err)
 		}
 		*destination = string(buf)
 		return nil
@@ -183,7 +183,7 @@ func (f *file) ReadString(destination *string, length int) io.Action {
 func (f *file) Ioctl(operation, argument uintptr) io.Action {
 	return func() error {
 		if _, _, errno := unix.Syscall(unix.SYS_IOCTL, f.handle.Fd(), operation, argument); errno != 0 {
-			return fmt.Errorf("ioctl %v failed with handle %v: %v", operation, f.handle.Name(), errno)
+			return fmt.Errorf("ioctl %v failed with handle %v: %w", operation, f.handle.Name(), errno)
 		}
 		return nil
 	}

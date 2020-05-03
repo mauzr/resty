@@ -28,10 +28,10 @@ func loadCA(caPath string) *x509.CertPool {
 	pool := x509.NewCertPool()
 	ca, err := ioutil.ReadFile(caPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to load CA file from %v: %v", caPath, err))
+		panic(fmt.Errorf("failed to load CA file from %v: %w", caPath, err))
 	}
 	if !pool.AppendCertsFromPEM(ca) {
-		panic(fmt.Errorf("failed to parse CA file from %v", caPath))
+		panic(fmt.Sprintf("failed to parse CA file from %v", caPath))
 	}
 	return pool
 }
@@ -40,7 +40,7 @@ func loadCA(caPath string) *x509.CertPool {
 func loadCertificate(crtPath, keyPath string) tls.Certificate {
 	cert, err := tls.LoadX509KeyPair(crtPath, keyPath)
 	if err != nil {
-		panic(fmt.Errorf("failed to load TLS cert/key pair from %v & %v: %v", crtPath, keyPath, err))
+		panic(fmt.Errorf("failed to load TLS cert/key pair from %v & %v: %w", crtPath, keyPath, err))
 	}
 	return cert
 }

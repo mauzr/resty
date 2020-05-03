@@ -18,7 +18,6 @@ package tradfri
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -27,6 +26,26 @@ import (
 )
 
 const identityLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+type CoAPError struct {
+	StatusCode coap.COAPCode
+	Cause      error
+}
+
+func (c CoAPError) Error() string {
+	switch {
+	case c.Cause != nil:
+		return c.Cause.Error()
+	case c.StatusCode != 0:
+		return c.StatusCode.String()
+	default:
+		panic("empty error")
+	}
+}
+
+func (c CoAPError) Unwrap() error {
+	return c.Cause
+}
 
 func login(address, identity, key string) (psk string, err error) {
 	listener, err := dtls.NewUdpListener(":0", time.Second*900)
@@ -74,7 +93,7 @@ func login(address, identity, key string) (psk string, err error) {
 		return
 	}
 	if pskMessage.Code != coap.Created {
-		err = fmt.Errorf("invalid return code: %v", pskMessage.Code)
+		err = &CoAPError{StatusCode: pskMessage.Code}
 		return
 	}
 	pskResp := struct {

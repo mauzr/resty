@@ -19,7 +19,6 @@ package bme680
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/bme/common"
@@ -115,11 +114,7 @@ func (m *Model) Reset() error {
 		m.device.Write(0x71, 0b00010000),
 		m.device.Write(0x75, 0b00010000),
 	}
-	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
-		return fmt.Errorf("could not reset chip: %v", err)
-	}
-
-	return nil
+	return io.Execute("resetting bme680", actions, []io.Action{m.device.Close()})
 }
 
 // Measure creates a measurement with the given BME680 behind the given address.
@@ -133,13 +128,13 @@ func (m *Model) Measure() (common.Measurement, error) {
 		m.device.WriteRead([]byte{0x1d}, reading[:]),
 		func() error {
 			if reading[0]&0x80 == 0x00 {
-				return fmt.Errorf("sensor was not ready on readout")
+				panic("sensor was not ready on readout")
 			}
 			return nil
 		},
 	}
-	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
-		return common.Measurement{}, fmt.Errorf("could not read measurement: %v", err)
+	if err := io.Execute("reading measurement from bme680", actions, []io.Action{m.device.Close()}); err != nil {
+		return common.Measurement{}, err
 	}
 
 	pReading := uint32(reading[2])<<12 | uint32(reading[3])<<4 | uint32(reading[4])>>16

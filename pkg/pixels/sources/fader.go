@@ -17,7 +17,6 @@ limitations under the License.
 package sources
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -38,17 +37,17 @@ func NewFader(duration time.Duration) Transition {
 // Setup the transition for use. May be called only once.
 func (f *fader) Setup(start, stop []color.RGBW, framerate int) {
 	if f.current != nil {
-		panic(fmt.Errorf("reused fader"))
+		panic("reused fader")
 	}
 	if len(start) == 0 {
-		panic(fmt.Errorf("start has zero length"))
+		panic("start has zero length")
 	}
 	if len(stop) == 0 {
-		panic(fmt.Errorf("end has zero length"))
+		panic("end has zero length")
 	}
 	f.stepsLeft = int(f.duration.Seconds() / time.Second.Seconds() * float64(framerate))
 	if len(start) != len(stop) {
-		panic(fmt.Errorf("start and stop have different sizes"))
+		panic("start and stop have different sizes")
 	}
 	f.current = make([]color.RGBW, len(start))
 	copy(f.current, start)

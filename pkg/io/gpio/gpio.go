@@ -87,8 +87,8 @@ func (p *pin) Export() func() error {
 			f := p.exportFile
 
 			actions := []io.Action{f.Open(os.O_WRONLY, 0660), f.WriteString(p.identifier)}
-			if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-				return fmt.Errorf("could not export linux GPIO pin %v: %v", p.identifier, err)
+			if err := io.Execute(fmt.Sprintf("could not export linux GPIO pin %v", p.identifier), actions, []io.Action{f.Close()}); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -105,8 +105,8 @@ func (p *pin) Direction(direction bool) func() error {
 		f := p.directionFile
 
 		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(d)}
-		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("could not set direction linux GPIO pin %v: %v", p.identifier, err)
+		if err := io.Execute(fmt.Sprintf("could not set direction linux GPIO pin %v", p.identifier), actions, []io.Action{f.Close()}); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -119,10 +119,10 @@ func (p *pin) Read(destination *bool) func() error {
 		rawValue := ""
 
 		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.ReadString(&rawValue, 1)}
-		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("could not read linux GPIO pin %v: %v", p.identifier, err)
+		if err := io.Execute(fmt.Sprintf("could not read linux GPIO pin %v", p.identifier), actions, []io.Action{f.Close()}); err != nil {
+			return err
 		} else if v, err := strconv.ParseBool(rawValue); err != nil {
-			return fmt.Errorf("could not parse linux GPIO pin %v value: %v", p.identifier, err)
+			return fmt.Errorf("could not parse linux GPIO pin %v value: %w", p.identifier, err)
 		} else {
 			*destination = v
 			return nil
@@ -141,8 +141,8 @@ func (p *pin) Write(value bool) func() error {
 
 		actions := []io.Action{f.Open(os.O_RDWR, 0660), f.WriteString(rawValue)}
 
-		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("could not write linux GPIO pin %v: %v", p.identifier, err)
+		if err := io.Execute(fmt.Sprintf("could not write linux GPIO pin %v", p.identifier), actions, []io.Action{f.Close()}); err != nil {
+			return err
 		}
 		return nil
 	}

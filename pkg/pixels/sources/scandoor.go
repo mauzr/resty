@@ -17,7 +17,6 @@ limitations under the License.
 package sources
 
 import (
-	"fmt"
 	"math"
 
 	"go.eqrx.net/mauzr/pkg/pixels/color"
@@ -48,7 +47,7 @@ func (s *scanDoor) Setup(length int, framerate int) {
 		panic("reused source")
 	}
 	if length != 11 {
-		panic(fmt.Errorf("strip length must be 11"))
+		panic("strip length must be 11")
 	}
 	s.change = 0.3 / float64(framerate)
 }
@@ -57,8 +56,7 @@ func (s *scanDoor) Setup(length int, framerate int) {
 func (s *scanDoor) Peek() []color.RGBW {
 	new := make([]color.RGBW, 11)
 	for i, pixel := range s.positions {
-		relativedistance := math.Abs(pixel[1]-s.position) / s.maxHeight
-		new[i] = s.lower.MixWith(math.Max(0.0, math.Min(relativedistance, 1.0)), s.upper)
+		new[i] = s.lower.MixWith(math.Abs(pixel[1]-s.position)/s.maxHeight, s.upper)
 	}
 
 	return new
@@ -68,7 +66,12 @@ func (s *scanDoor) Peek() []color.RGBW {
 func (s *scanDoor) Pop() []color.RGBW {
 	new := s.Peek()
 	s.position += s.change
-	if s.position >= s.maxHeight || s.position <= 0.0 {
+	switch {
+	case s.position >= s.maxHeight:
+		s.position = 1.0
+		s.change = -s.change
+	case s.position <= 0.0:
+		s.position = 0.0
 		s.change = -s.change
 	}
 	return new

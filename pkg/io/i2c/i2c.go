@@ -90,7 +90,7 @@ func (d *device) WriteRead(source []byte, destination []byte) io.Action {
 		msg := operations{msgs: uintptr(unsafe.Pointer(&parts[0])), nmsgs: 2}
 
 		if err := d.file.Ioctl(ioctl, uintptr(unsafe.Pointer(&msg)))(); err != nil {
-			return fmt.Errorf("failed to write %v and read #%v to I2C address %v because \"%v\"", source, len(destination), d.address, err)
+			return fmt.Errorf("failed to write %v and read #%v to I2C address %v because: %w", source, len(destination), d.address, err)
 		}
 		return nil
 	}
@@ -105,7 +105,7 @@ func (d *device) Write(source ...byte) io.Action {
 		msg := operations{msgs: uintptr(unsafe.Pointer(&parts[0])), nmsgs: 1}
 
 		if err := d.file.Ioctl(ioctl, uintptr(unsafe.Pointer(&msg)))(); err != nil {
-			return fmt.Errorf("failed to write %v to I2C address %v because \"%v\"", source, d.address, err)
+			return fmt.Errorf("failed to write %v to I2C address %v: %w", source, d.address, err)
 		}
 		return nil
 	}

@@ -35,6 +35,7 @@ func (b *BodyDummy) Read(p []byte) (n int, err error) {
 
 // dummy mimics an actual REST interface.
 type dummy struct {
+	ctx context.Context
 }
 
 // ServerNames that are being served by this interface.
@@ -50,7 +51,7 @@ func (d dummy) Serve() []<-chan error { return nil }
 func (d dummy) Endpoint(path, form string, queryHandler func(query *Request)) {}
 
 // GetJSON from a remote site. It gets serialized into the given interface.
-func (d dummy) GetJSON(context.Context, string, interface{}) Error { return nil }
+func (d dummy) GetJSON(context.Context, string, interface{}) error { return nil }
 
 // GetRaw response from a remote site.
 func (d dummy) GetRaw(context.Context, string) (*http.Response, error) {
@@ -62,13 +63,14 @@ func (d dummy) PostRaw(context.Context, string, io.Reader) (*http.Response, erro
 	return &http.Response{Body: &BodyDummy{}}, nil
 }
 
-func (d dummy) WebserverContext() context.Context { return context.Background() }
+func (d dummy) WebserverContext() context.Context { return d.ctx }
 
 func (d dummy) Mux() *http.ServeMux { return nil }
 
 func (d dummy) Client() *http.Client { return nil }
 
 // NewDummy creates a new dummy REST interface.
-func NewDummy() REST {
-	return &dummy{}
+func NewDummy() (REST, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &dummy{ctx}, cancel
 }

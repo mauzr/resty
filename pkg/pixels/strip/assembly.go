@@ -53,10 +53,10 @@ func (a *assembly) Check(end Input) {
 		}
 	}
 	if len(loose) != 1 {
-		panic(fmt.Errorf("strips %s go into nothing", loose))
+		panic(fmt.Sprintf("strips %s go into nothing", loose))
 	}
 	if loose[0] != end.Name() {
-		panic(fmt.Errorf("assembly should end in %s, but ends in %s", loose[0], end.Name()))
+		panic(fmt.Sprintf("assembly should end in %s, but ends in %s", loose[0], end.Name()))
 	}
 }
 
@@ -64,7 +64,7 @@ func (a *assembly) Check(end Input) {
 func (a *assembly) New(name string, length int) Strip {
 	strip := strip{name, length, make(chan []color.RGBW)}
 	if _, ok := a.links[strip.Name()]; ok {
-		panic(fmt.Errorf("duplicate strip name: %s", strip.Name()))
+		panic(fmt.Sprintf("duplicate strip name: %s", strip.Name()))
 	}
 	a.links[strip.Name()] = []string{}
 	return &strip
@@ -74,11 +74,11 @@ func (a *assembly) New(name string, length int) Strip {
 func (a *assembly) Merge(output Output, inputs ...Input) {
 	for _, input := range inputs {
 		if _, ok := a.links[input.Name()]; !ok {
-			panic(fmt.Errorf("input unknown: %s", input.Name()))
+			panic(fmt.Sprintf("input unknown: %s", input.Name()))
 		}
 		for _, other := range a.links[input.Name()] {
 			if output.Name() == other {
-				panic(fmt.Errorf("%s receives colors from %s multiple times", other, input.Name()))
+				panic(fmt.Sprintf("%s receives colors from %s multiple times", other, input.Name()))
 			}
 		}
 		a.links[input.Name()] = append(a.links[input.Name()], output.Name())
@@ -89,13 +89,13 @@ func (a *assembly) Merge(output Output, inputs ...Input) {
 // Split a strip into multiple outputs.
 func (a *assembly) Split(input Input, outputs ...Output) {
 	if _, ok := a.links[input.Name()]; !ok {
-		panic(fmt.Errorf("input unknown: %s", input.Name()))
+		panic(fmt.Sprintf("input unknown: %s", input.Name()))
 	}
 
 	for _, output := range outputs {
 		for _, other := range a.links[input.Name()] {
 			if output.Name() == other {
-				panic(fmt.Errorf("%s receives colors from %s multiple times", other, input.Name()))
+				panic(fmt.Sprintf("%s receives colors from %s multiple times", other, input.Name()))
 			}
 		}
 		a.links[input.Name()] = append(a.links[input.Name()], output.Name())

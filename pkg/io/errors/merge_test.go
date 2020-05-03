@@ -18,6 +18,7 @@ package errors_test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -25,14 +26,19 @@ import (
 	"go.eqrx.net/mauzr/pkg/io/errors"
 )
 
+func expectNothing(t *testing.T, timer *time.Timer, c <-chan error) {
+	select {
+	case <-timer.C:
+	case <-c:
+		assert.FailNow(t, "expected no err")
+	}
+}
+
 func TestMerge(t *testing.T) {
 	wasCalled := false
-	onError := func() {
-		wasCalled = true
-	}
-	a := make(chan error)
-	b := make(chan error)
-	c := make(chan error)
+	once := sync.Once{}
+	onError := func() { once.Do(func() { wasCalled = true }) }
+	a, b, c := make(chan error), make(chan error), make(chan error)
 	merged := errors.Merge(onError, a, b, c)
 
 	assert.Equal(t, 0, len(merged))
@@ -42,42 +48,28 @@ func TestMerge(t *testing.T) {
 	default:
 	}
 	assert.False(t, wasCalled)
-	err := fmt.Errorf("somerror")
+	err := fmt.Errorf("somerror") // nolint
 	b <- err
 
 	holdTime := 1 * time.Millisecond
-	timer := time.NewTimer(holdTime)
-	defer timer.Stop()
-
 	select {
-	case <-timer.C:
+	case <-time.NewTimer(holdTime).C:
 		assert.FailNow(t, "expected err")
 	case e, ok := <-merged:
 		assert.True(t, ok)
 		assert.Equal(t, err, e)
 	}
-	timer.Reset(holdTime)
 	assert.True(t, wasCalled)
-	select {
-	case <-timer.C:
-	case <-merged:
-		assert.FailNow(t, "expected no err")
-	}
+	expectNothing(t, time.NewTimer(holdTime), merged)
 
 	close(c)
-	timer.Reset(holdTime)
 
-	select {
-	case <-timer.C:
-	case <-merged:
-		assert.FailNow(t, "expected no err")
-	}
+	expectNothing(t, time.NewTimer(holdTime), merged)
 
 	a <- err
-	timer.Reset(holdTime)
 
 	select {
-	case <-timer.C:
+	case <-time.NewTimer(holdTime).C:
 		assert.FailNow(t, "expected err")
 	case e, ok := <-merged:
 		assert.True(t, ok)
@@ -85,19 +77,13 @@ func TestMerge(t *testing.T) {
 	}
 
 	close(a)
-	timer.Reset(holdTime)
 
-	select {
-	case <-timer.C:
-	case <-merged:
-		assert.FailNow(t, "expected no err")
-	}
+	expectNothing(t, time.NewTimer(holdTime), merged)
 
 	close(b)
-	timer.Reset(holdTime)
 
 	select {
-	case <-timer.C:
+	case <-time.NewTimer(holdTime).C:
 		assert.FailNow(t, "expected err")
 	case _, ok := <-merged:
 		assert.False(t, ok)

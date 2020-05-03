@@ -68,11 +68,19 @@ func Collect(source <-chan error, additional ...error) error {
 	case 1:
 		err = errors[0]
 	default:
-		err = fmt.Errorf("multiple errors: %v", errors)
+		err = &MultiError{errors}
 	}
 	return err
 }
 
-func Is(err, target error) bool {
-	return errors.Is(err, target)
+var Is = errors.Is
+var As = errors.As
+var New = errors.New
+
+type MultiError struct {
+	Errs []error
+}
+
+func (m MultiError) Error() string {
+	return fmt.Sprintf("encountered multiple errors: %v", m.Errs)
 }

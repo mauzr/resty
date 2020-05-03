@@ -63,7 +63,7 @@ func New(source <-chan raspivid.Data) <-chan Data {
 				var ready bool
 				ready, err := processWorkBuffer(frameBuffer, workBuffer, frameSeparator)
 				if err != nil {
-					feed <- Data{nil, fmt.Errorf("h264splitter: %v", err.Error())}
+					feed <- Data{nil, fmt.Errorf("h264splitter: %w", err)}
 					return
 				}
 				if ready {

@@ -19,40 +19,28 @@ package rest
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 )
 
-// Error with http specific information.
-type Error interface {
-	// Error returns the error as string.
-	Error() string
-	// StatusCode returns the http that caused the error.
-	StatusCode() int
+type HTTPError struct {
+	StatusCode int
+	Cause      error
 }
 
-// httpError implements error.
-type httpError struct {
-	statusCode int
-	cause      error
-}
-
-// StatusCode returns the http that caused the error.
-func (h httpError) StatusCode() int {
-	return h.statusCode
-}
-
-// Error returns the error as string.
-func (h httpError) Error() string {
+func (h HTTPError) Error() string {
 	switch {
-	case h.cause != nil:
-		return h.cause.Error()
-	case h.statusCode != 0:
-		return http.StatusText(h.statusCode)
+	case h.Cause != nil:
+		return h.Cause.Error()
+	case h.StatusCode != 0:
+		return http.StatusText(h.StatusCode)
 	default:
 		panic("empty error")
 	}
+}
+
+func (h HTTPError) Unwrap() error {
+	return h.Cause
 }
 
 // GetRaw response from a remote site.
@@ -66,18 +54,18 @@ func (r *rest) GetRaw(ctx context.Context, url string) (*http.Response, error) {
 }
 
 // GetJSON from a remote site. It gets serialized into the given interface.
-func (r *rest) GetJSON(ctx context.Context, url string, target interface{}) Error {
+func (r *rest) GetJSON(ctx context.Context, url string, target interface{}) error {
 	response, err := r.GetRaw(ctx, url)
 	if err != nil {
-		return &httpError{0, err}
+		return &HTTPError{0, err}
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return &httpError{response.StatusCode, nil}
+		return &HTTPError{response.StatusCode, nil}
 	}
 	if err := json.NewDecoder(response.Body).Decode(&target); err != nil {
-		return &httpError{0, fmt.Errorf("could not deserialize JSON - %v", err)}
+		return &HTTPError{0, err}
 	}
 	return nil
 }

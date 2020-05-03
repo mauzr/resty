@@ -17,7 +17,6 @@ limitations under the License.
 package sources
 
 import (
-	"fmt"
 	"math/rand"
 
 	"go.eqrx.net/mauzr/pkg/pixels/color"
@@ -38,10 +37,10 @@ func NewStars(theme color.RGBW) Loop {
 // Setup the loop for use. May be called only once.
 func (c *stars) Setup(length int, framerate int) {
 	if c.length != 0 {
-		panic(fmt.Errorf("reused source"))
+		panic("reused source")
 	}
 	if length == 0 {
-		panic(fmt.Errorf("zero length"))
+		panic("zero length")
 	}
 	c.length = length
 	c.factors = make([]float64, length)

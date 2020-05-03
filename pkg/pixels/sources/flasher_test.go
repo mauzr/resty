@@ -26,7 +26,7 @@ import (
 )
 
 // TestFlasher: If the flasher actually flashes.
-func TestFlasher(t *testing.T) { //nolint
+func TestFlasher(t *testing.T) {
 	fader := sources.NewFlasher(color.Off, color.Bright, 1*time.Second)
 	fader.Setup(1, 4)
 	assert.Equal(t, []color.RGBW{color.Bright}, fader.Pop())

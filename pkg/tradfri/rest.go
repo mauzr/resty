@@ -45,6 +45,21 @@ const (
 `
 )
 
+func send(request interface{}, group string, peer *dtls.Peer) error {
+	rawChange, err := json.Marshal(request)
+	if err != nil {
+		panic(err)
+	}
+	req := coap.Message{Type: coap.NonConfirmable, Code: coap.PUT, Payload: rawChange, MessageID: 1}
+	req.SetPath([]string{"15004", group})
+	rawRequest, err := req.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+
+	return peer.Write(rawRequest)
+}
+
 func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 	mutex := sync.Mutex{}
 	lastPower := false
@@ -58,25 +73,20 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 	})
 	c.Endpoint(fmt.Sprintf("/%s", name), form, func(query *rest.Request) {
 		args := struct {
-			Power *bool    `json:"power,string"`
+			Power bool     `json:"power,string"`
 			Level *float64 `json:"level,string"`
 		}{}
 		if err := query.Args(&args); err != nil {
 			return
-		}
-		if args.Power == nil && args.Level == nil {
-			query.RequestError = fmt.Errorf("nothing requested")
 		}
 		if args.Level != nil {
 			*args.Level = math.Max(0.0, math.Min(*args.Level, 1.0)) * 254.0
 		}
 
 		request := map[string]int{}
-		switch {
-		case args.Power == nil:
-		case *args.Power:
+		if args.Power {
 			request["5850"] = 1
-		case !*args.Power:
+		} else {
 			request["5850"] = 0
 		}
 
@@ -86,25 +96,12 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 			request["5851"] = int(*args.Level)
 		}
 
-		rawChange, err := json.Marshal(&request)
-		if err != nil {
-			panic(err)
-		}
-		req := coap.Message{Type: coap.NonConfirmable, Code: coap.PUT, Payload: rawChange, MessageID: 1}
-		req.SetPath([]string{"15004", group})
-		rawRequest, err := req.MarshalBinary()
-		if err != nil {
-			panic(err)
-		}
-
-		if err = peer.Write(rawRequest); err != nil {
+		if err := send(request, group, peer); err != nil {
 			query.GatewayError = err
-			return
+		} else {
+			mutex.Lock()
+			lastPower = args.Power
+			mutex.Unlock()
 		}
-		mutex.Lock()
-		if args.Power != nil {
-			lastPower = *args.Power
-		}
-		mutex.Unlock()
 	})
 }

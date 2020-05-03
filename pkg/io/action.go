@@ -16,14 +16,17 @@ limitations under the License.
 
 package io
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
-// Action represents a defined action that can be executed later
+// Action represents a defined action that can be executed later.
 type Action func() error
 
 // Execute the given Actions. Remaining Actions are not executed if an Action
 // fails. After Actions are handled, all cleanup actions all executed.
-func Execute(actions, cleanup []Action) error {
+func Execute(description string, actions, cleanup []Action) (err error) {
 	var firstError error
 
 	for _, action := range actions {
@@ -38,8 +41,11 @@ func Execute(actions, cleanup []Action) error {
 			firstError = err
 		}
 	}
+	if firstError != nil {
+		err = fmt.Errorf("%v failed: %w", description, firstError)
+	}
 
-	return firstError
+	return
 }
 
 // Sleep create an Action that sleep for a given time.

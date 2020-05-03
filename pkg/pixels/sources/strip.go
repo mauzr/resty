@@ -17,16 +17,15 @@ limitations under the License.
 package sources
 
 import (
-	"fmt"
-
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 	"go.eqrx.net/mauzr/pkg/pixels/strip"
 )
 
 type input struct {
-	length int
-	input  strip.Input
-	next   []color.RGBW
+	length  int
+	input   strip.Input
+	current []color.RGBW
+	last    []color.RGBW
 }
 
 // Setup the loop for use. May be called only once.
@@ -38,31 +37,32 @@ func (i *input) Setup(length int, _ int) {
 		panic("zero length")
 	}
 	if length != i.input.Length() {
-		panic(fmt.Errorf("length does not match input"))
+		panic("length does not match input")
 	}
 	i.length = length
 }
 
 // Peer the next generated color (Next invocation will return the same color).
 func (i *input) Peek() []color.RGBW {
-	if i.next != nil {
-		return i.next
+	if i.current != nil {
+		return i.current
 	}
 	next, hasNext := i.input.Get()
 	if !hasNext {
-		panic(fmt.Errorf("no next"))
+		return i.last
 	}
-	i.next = next
-	return i.next
+	i.last = next
+	i.current = next
+	return i.current
 }
 
 // Pop the next generated color (Next invocation will return the next color).
 func (i *input) Pop() []color.RGBW {
 	next := i.Peek()
-	i.next = nil
+	i.current = nil
 	return next
 }
 
 func FromInput(i strip.Input) Loop {
-	return &input{0, i, nil}
+	return &input{0, i, nil, nil}
 }

@@ -44,26 +44,23 @@ type memoryMap struct {
 	mmap []byte
 }
 
-// Close releases the memory mapping
+// Close releases the memory mapping.
 func (m *memoryMap) Close() io.Action {
 	return func() error {
 		if err := m.file.Unmap(&m.mmap)(); err != nil {
-			return fmt.Errorf("could not unmap memory: %v", err)
+			return fmt.Errorf("could not unmap memory: %w", err)
 		}
 		return nil
 	}
 }
 
-// Open maps the file to memory
+// Open maps the file to memory.
 func (m *memoryMap) Open(offset int64, length int) io.Action {
 	return func() error {
 		actions := []io.Action{
 			m.file.Open(os.O_RDWR|os.O_SYNC, 0600),
 			m.file.Map(offset, length, unix.PROT_WRITE|unix.PROT_READ, unix.MAP_SHARED, &m.mmap)}
-		if err := io.Execute(actions, []io.Action{m.file.Close()}); err != nil {
-			return fmt.Errorf("could not map file %v to memory: %v", m.file, err)
-		}
-		return nil
+		return io.Execute("open mmap", actions, []io.Action{m.file.Close()})
 	}
 }
 

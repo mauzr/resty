@@ -17,7 +17,7 @@ limitations under the License.
 package play
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/pixels/color"
@@ -68,6 +68,8 @@ func shutdown(colors []color.RGBW, output strip.Output, framerate int) {
 	}
 }
 
+var ErrUnknownPart = errors.New("unknown part")
+
 func New(parts map[string]sources.Loop, output strip.Output, framerate int, requests <-chan Request) <-chan string {
 	if framerate < 0 {
 		panic("framerate must be > 0")
@@ -95,10 +97,10 @@ func New(parts map[string]sources.Loop, output strip.Output, framerate int, requ
 					return
 				case cap(request.Response) < 1:
 					close(request.Response)
-					panic(fmt.Errorf("received blocking channel for response"))
+					panic("received blocking channel for response")
 				default:
 					if _, ok := parts[request.Part]; !ok {
-						request.Response <- fmt.Errorf("illegal mode")
+						request.Response <- ErrUnknownPart
 						close(request.Response)
 					} else {
 						currentPart = request.Part

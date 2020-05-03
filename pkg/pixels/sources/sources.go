@@ -16,7 +16,9 @@ limitations under the License.
 
 package sources
 
-import "go.eqrx.net/mauzr/pkg/pixels/color"
+import (
+	"go.eqrx.net/mauzr/pkg/pixels/color"
+)
 
 // Loop is a color generator that can generate endlessly.
 type Loop interface {

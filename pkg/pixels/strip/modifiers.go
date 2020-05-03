@@ -44,7 +44,7 @@ func split(input Input, outputs ...Output) {
 		}(outputChannels[i], output)
 	}
 	if outputLength != input.Length() {
-		panic(fmt.Errorf("inputs (%s) and output have different lengths: %v, %v", input.Name(), input.Length(), outputLength))
+		panic(fmt.Sprintf("inputs (%s) and output have different lengths: %v, %v", input.Name(), input.Length(), outputLength))
 	}
 	for {
 		colors, ok := input.Get()
@@ -74,7 +74,7 @@ func merge(output Output, inputs ...Input) {
 			lastColors[i][j] = color.Unmanaged
 		}
 		if inputNameSet[input.Name()] {
-			panic(fmt.Errorf("multiple inputs have the name :%s", input.Name()))
+			panic(fmt.Sprintf("multiple inputs have the name :%s", input.Name()))
 		}
 		inputNameSet[input.Name()] = true
 		offsets[i] = inputLength
@@ -92,7 +92,7 @@ func merge(output Output, inputs ...Input) {
 		}(inputChannels[i], input)
 	}
 	if inputLength != output.Length() {
-		panic(fmt.Errorf("inputs and output (%s) have different lengths: %v, %v", output.Name(), inputLength, output.Length()))
+		panic(fmt.Sprintf("inputs and output (%s) have different lengths: %v, %v", output.Name(), inputLength, output.Length()))
 	}
 	for {
 		anyOk := false

@@ -33,8 +33,8 @@ func fetchGpioBase(base *uint32) io.Action {
 	return func() error {
 		f := file.New("/proc/device-tree/soc/ranges")
 		buffer := make([]byte, 4)
-		if err := io.Execute([]io.Action{f.Open(os.O_RDONLY, 0600), f.SeekTo(4), f.Read(buffer)}, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("could not read GPIO memory range: %v", err)
+		if err := io.Execute("could not read GPIO memory range", []io.Action{f.Open(os.O_RDONLY, 0600), f.SeekTo(4), f.Read(buffer)}, []io.Action{f.Close()}); err != nil {
+			return err
 		}
 		if err := binary.Read(bytes.NewReader(buffer), binary.BigEndian, base); err != nil {
 			panic(err)
@@ -49,10 +49,10 @@ func (p *pin) Pull(direction uint) func() error {
 	return func() error {
 		identifier, err := strconv.ParseUint(p.identifier, 10, 32)
 		if err != nil {
-			return fmt.Errorf("illegal GPIO identifier: %v", identifier)
+			panic(fmt.Sprintf("illegal GPIO identifier: %v", identifier))
 		}
 		if direction > 2 {
-			return fmt.Errorf("illegal pull for identifier: %v", identifier)
+			panic(fmt.Sprintf("illegal pull for identifier %v: %v", identifier, direction))
 		}
 
 		clockRegister := identifier/32 + 38
@@ -72,8 +72,8 @@ func (p *pin) Pull(direction uint) func() error {
 
 		f := p.gpioMemFile
 		actions := []io.Action{fetchGpioBase(&gpioBase), f.Open(int64(gpioBase), 4096), f.Uint32Register(&gpioMem), set}
-		if err := io.Execute(actions, []io.Action{f.Close()}); err != nil {
-			return fmt.Errorf("could set GPIO pull: %v", err)
+		if err := io.Execute("could set GPIO pull", actions, []io.Action{f.Close()}); err != nil {
+			return err
 		}
 
 		return nil

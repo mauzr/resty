@@ -53,7 +53,7 @@ type normalPort struct {
 	path string
 }
 
-// NewPort creates a new UART port handler
+// NewPort creates a new UART port handler.
 func NewPort(path string, baud uint32) Port {
 	return &normalPort{file.New(path), baud, path}
 }
@@ -69,7 +69,7 @@ func (p *normalPort) Open() io.Action {
 			p.file.Open(unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|os.O_RDWR, 0666),
 			p.file.Ioctl(unix.TCSETS, uintptr(unsafe.Pointer(&settings))),
 		}
-		return io.Execute(actions, []io.Action{})
+		return io.Execute("open uart", actions, []io.Action{})
 	}
 }
 

@@ -17,7 +17,6 @@ limitations under the License.
 package sources
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -38,10 +37,10 @@ func NewRainbow(cycleDuration time.Duration) Loop {
 // Setup the loop for use. May be called only once.
 func (r *rainbow) Setup(length int, framerate int) {
 	if r.length != 0 {
-		panic(fmt.Errorf("reused source"))
+		panic("reused source")
 	}
 	if length == 0 {
-		panic(fmt.Errorf("zero length"))
+		panic("zero length")
 	}
 	r.length = length
 	r.speed = 1 / (r.cycleDuration.Seconds() * float64(framerate))

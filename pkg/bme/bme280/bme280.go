@@ -19,7 +19,6 @@ package bme280
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/bme/common"
@@ -79,8 +78,8 @@ func (m *Model) Reset() error {
 		m.device.WriteRead([]byte{0x88}, data[0:26]),
 		m.device.WriteRead([]byte{0xe1}, data[26:35]),
 	}
-	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
-		return fmt.Errorf("could not reset chip: %v", err)
+	if err := io.Execute("resetting bme280", actions, []io.Action{m.device.Close()}); err != nil {
+		return err
 	}
 
 	var i calibrationInput
@@ -105,8 +104,8 @@ func (m *Model) Measure() (common.Measurement, error) {
 		m.device.Write(0xf4, 0x25),
 		m.device.WriteRead([]byte{0xf7}, reading[:]),
 	}
-	if err := io.Execute(actions, []io.Action{m.device.Close()}); err != nil {
-		return common.Measurement{}, fmt.Errorf("could not read measurement from chip: %v", err)
+	if err := io.Execute("reading measurement from bme280", actions, []io.Action{m.device.Close()}); err != nil {
+		return common.Measurement{}, err
 	}
 
 	pReading := (uint32(reading[0])<<16 | uint32(reading[1])<<8 | uint32(reading[2])) >> 4

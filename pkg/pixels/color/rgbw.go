@@ -42,7 +42,7 @@ func (r RGBW) mixChannels(self, amount, other float64) float64 {
 // MixWith some other color and the given tendency to one or the other (0: just take the left color, 1: just take the right color).
 func (r RGBW) MixWith(amount float64, other RGBW) RGBW {
 	if amount < 0.0 || amount > 1.0 {
-		panic(fmt.Errorf("illegal amount: %v", amount))
+		panic(fmt.Sprintf("illegal amount: %v", amount))
 	}
 	return RGBW{
 		Red:   r.mixChannels(r.Red, amount, other.Red),

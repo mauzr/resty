@@ -31,7 +31,7 @@ import (
 // REST provides the interface to REST io.
 type REST interface {
 	// GetJSON from a remote site. It gets serialized into the given interface.
-	GetJSON(context.Context, string, interface{}) Error
+	GetJSON(context.Context, string, interface{}) error
 	// GetRaw response from a remote site.
 	GetRaw(context.Context, string) (*http.Response, error)
 	// PostRaw from the given reader to a remote site.
@@ -121,7 +121,7 @@ func New(ctx context.Context, serviceName string, listeners []net.Listener) REST
 	rest.mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	rest.mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	rest.mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	rest.Endpoint("/health", "I am alive!", func(r *Request) { r.RequestError = fmt.Errorf("no arguments supported") })
+	rest.Endpoint("/health", "I am alive!", func(r *Request) { r.RequestError = fmt.Errorf("%w: no arguments supported", ErrRequest) })
 
 	return &rest
 }

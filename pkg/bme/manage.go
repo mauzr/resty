@@ -17,7 +17,6 @@ limitations under the License.
 package bme
 
 import (
-	"fmt"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/bme/bme280"
@@ -54,7 +53,7 @@ func New(chip Chip, offsets Measurement, requests <-chan Request) {
 				return
 			case cap(request.Response) < 1:
 				close(request.Response)
-				panic(fmt.Errorf("received blocking channel for response"))
+				panic("received blocking channel for response")
 			}
 
 			if lastMeasurement != nil && lastMeasurement.Timestamp.After(request.MaxAge) {

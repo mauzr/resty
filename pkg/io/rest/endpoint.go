@@ -19,6 +19,7 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -36,6 +37,8 @@ type Request struct {
 	Redirect                                  string
 }
 
+var ErrRequest = errors.New("invalid request")
+
 // Args are parsed from the url into the given struct.
 func (r *Request) Args(target interface{}) error {
 	args := r.URL.Query()
@@ -51,7 +54,9 @@ func (r *Request) Args(target interface{}) error {
 	if err != nil {
 		panic(err)
 	}
-	r.RequestError = json.Unmarshal(data, target)
+	if err := json.Unmarshal(data, target); err != nil {
+		r.RequestError = fmt.Errorf("%w: %s", ErrRequest, err)
+	}
 	return r.RequestError
 }
 
@@ -86,7 +91,7 @@ func (r *rest) Endpoint(path, form string, queryHandler func(query *Request)) {
 			case response.InternalError != nil:
 				http.Error(w, response.InternalError.Error(), http.StatusInternalServerError)
 			case req.Method != http.MethodGet && response.ResponseBody != nil:
-				panic(fmt.Errorf("response body only allowed for get method"))
+				panic("response body only allowed for get method")
 			case response.ResponseBody != nil:
 				w.WriteHeader(response.Status)
 				_, err := w.Write(response.ResponseBody)

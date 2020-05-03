@@ -19,7 +19,7 @@ package rest
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
+	"errors"
 	"net"
 
 	"net/http"
@@ -28,18 +28,17 @@ import (
 // Serve blocks and runs the configured http servers.
 func (r *rest) Serve() []<-chan error {
 	if len(r.servers) != len(r.listeners) {
-		panic(fmt.Errorf("length of servers and listeners ist different"))
+		panic("length of servers and listeners ist different")
 	}
 	if len(r.servers) == 0 {
-		panic(fmt.Errorf("no servers specified"))
+		panic("no servers specified")
 	}
-	// TODO: Error seems to be dropped if IP is not available with systemd socket? server just returns
-	errors := make([]<-chan error, len(r.servers))
+	errs := make([]<-chan error, len(r.servers))
 	for i := range r.servers {
 		err := make(chan error)
 		go func(server *http.Server, listener *net.Listener, errs chan<- error) {
 			tlsListener := tls.NewListener(*listener, server.TLSConfig)
-			if err := server.Serve(tlsListener); err != http.ErrServerClosed {
+			if err := server.Serve(tlsListener); errors.Is(err, http.ErrServerClosed) {
 				errs <- err
 			}
 			close(errs)
@@ -57,7 +56,7 @@ func (r *rest) Serve() []<-chan error {
 		close(shutdownErrors)
 	}()
 
-	return append(errors, shutdownErrors)
+	return append(errs, shutdownErrors)
 }
 
 func (r *rest) WebserverContext() context.Context {

@@ -39,7 +39,7 @@ type Client interface {
 	Write(ctx context.Context, bucket string, measurements ...Measurement) error
 }
 
-// client implements Client
+// client implements Client.
 type client struct {
 	c           http.Client
 	destination string
@@ -97,7 +97,7 @@ func (c client) Write(ctx context.Context, bucket string, measurements ...Measur
 		switch {
 		case err != nil:
 		case response.StatusCode != http.StatusNoContent:
-			err = fmt.Errorf("%v", response.Status)
+			err = rest.HTTPError{StatusCode: response.StatusCode}
 		default:
 			response.Body.Close()
 		}

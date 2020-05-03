@@ -17,6 +17,7 @@ limitations under the License.
 package raspivid
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -35,18 +36,21 @@ type Data struct {
 	Err  error
 }
 
+var ErrConfigureation = errors.New("invalid configuration")
+var ErrProcess = errors.New("raspivid process failed")
+
 func (c Configuration) arguments() ([]string, error) {
 	if !c.On {
-		return nil, fmt.Errorf("not on")
+		return nil, fmt.Errorf("%w: not on", ErrConfigureation)
 	}
 	if c.Width <= 0 {
-		return nil, fmt.Errorf("invalid width")
+		return nil, fmt.Errorf("%w: invalid width", ErrConfigureation)
 	}
 	if c.Height <= 0 {
-		return nil, fmt.Errorf("invalid height")
+		return nil, fmt.Errorf("%w: invalid height", ErrConfigureation)
 	}
 	if c.Framerate <= 0 {
-		return nil, fmt.Errorf("invalid framerate")
+		return nil, fmt.Errorf("%w: invalid framerate", ErrConfigureation)
 	}
 	width := strconv.Itoa(c.Width)
 	height := strconv.Itoa(c.Height)
@@ -60,7 +64,7 @@ func (c Configuration) arguments() ([]string, error) {
 		}
 	}
 	if !exvalid {
-		return nil, fmt.Errorf("illegal exposure mode value")
+		return nil, fmt.Errorf("%w: illegal exposure mode", ErrConfigureation)
 	}
 
 	exposure := c.Exposure
@@ -102,52 +106,66 @@ type Request struct {
 	Response      chan<- error
 }
 
+func handleStreaming(requests <-chan Request, readAmount int, dataBuffer []byte, data chan<- Data) (nextRequest *Request, hasNextRequest bool) {
+	select {
+	case next, hasNext := <-requests:
+		if hasNext && cap(next.Response) < 1 {
+			close(next.Response)
+			panic("received blocking channel for response")
+		}
+		nextRequest = &next
+		hasNextRequest = hasNext
+	case data <- Data{dataBuffer[:readAmount], nil}:
+		hasNextRequest = true
+	}
+	return
+}
+
+func handleStreamingStart(request Request, requests <-chan Request, readAmount int, readError error, dataBuffer []byte, data chan<- Data) (nextRequest *Request, hasNextRequest bool) {
+	defer close(request.Response)
+	if readError == nil {
+		select {
+		case next, hasNext := <-requests:
+			if hasNext && cap(next.Response) < 1 {
+				close(next.Response)
+				panic("received blocking channel for response")
+			}
+			nextRequest = &next
+			hasNextRequest = hasNext
+		case data <- Data{dataBuffer[:readAmount], nil}:
+			hasNextRequest = true
+		}
+	} else {
+		request.Response <- readError
+	}
+	return
+}
 func handleCommand(stdout, stderr io.Reader, request *Request, requests <-chan Request, data chan<- Data) *Request {
 	for {
 		dataBuffer := make([]byte, 4096)
 		n, err := stdout.Read(dataBuffer)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			errorBuffer := make([]byte, 4096)
 			n, err = stderr.Read(errorBuffer)
 			if err == nil {
-				err = fmt.Errorf(string(errorBuffer[:n]))
+				err = fmt.Errorf("%w: %s", ErrProcess, errorBuffer[:n])
 			}
 		}
 		switch {
-		case request == nil && err == nil:
-			select {
-			case nextRequest, ok := <-requests:
-				switch {
-				case !ok:
-					return nil
-				case cap(nextRequest.Response) < 1:
-					close(nextRequest.Response)
-					panic(fmt.Errorf("received blocking channel for response"))
-				}
-				return &nextRequest
-			case data <- Data{dataBuffer[:n], nil}:
+		case request != nil:
+			next, hasNext := handleStreamingStart(*request, requests, n, err, dataBuffer, data)
+			if !hasNext {
+				return nil
 			}
-		case request != nil && err == nil:
-			close(request.Response)
-			request = nil
-			select {
-			case nextRequest, ok := <-requests:
-				switch {
-				case !ok:
-					return nil
-				case cap(nextRequest.Response) < 1:
-					close(nextRequest.Response)
-					panic(fmt.Errorf("received blocking channel for response"))
-				}
-				return &nextRequest
-			case data <- Data{dataBuffer[:n], nil}:
+			return next
+		case err == nil:
+			next, hasNext := handleStreaming(requests, n, dataBuffer, data)
+			if !hasNext {
+				return nil
 			}
-		case request == nil && err != nil:
-			data <- Data{nil, fmt.Errorf("raspivid failed: %s", err)}
-			return nil
-		case request != nil && err != nil:
-			request.Response <- err
-			close(request.Response)
+			return next
+		case err != nil:
+			data <- Data{nil, fmt.Errorf("raspivid failed: %w", err)}
 			return nil
 		}
 	}
@@ -168,7 +186,7 @@ func New(requests <-chan Request) <-chan Data {
 					return
 				case cap(newRequest.Response) < 1:
 					close(newRequest.Response)
-					panic(fmt.Errorf("received blocking channel for response"))
+					panic("received blocking channel for response")
 				}
 				request = &newRequest
 			}

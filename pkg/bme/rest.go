@@ -54,13 +54,15 @@ func setupHandler(c rest.REST, requests chan<- Request, tags map[string]string) 
 		}
 		select {
 		case <-measureCtx.Done():
+			fmt.Println("timeout")
 			query.InternalError = measureCtx.Err()
 		case response, ok := <-responses:
 			switch {
 			case !ok:
-				panic(fmt.Errorf("unknown internal error"))
+				panic("unknown internal error")
 			case response.Err != nil:
-				query.InternalError = err
+				fmt.Println(response.Err)
+				query.InternalError = response.Err
 			default:
 				response.Measurement.Tags = tags
 				query.ResponseBody, query.InternalError = json.Marshal(response.Measurement)

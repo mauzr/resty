@@ -97,7 +97,7 @@ func (s strip) GetChannel() <-chan []color.RGBW {
 // Set colors of the strip.
 func (s strip) Set(colors []color.RGBW) {
 	if len(colors) != s.length {
-		panic(fmt.Errorf("illegal colors length (%d) received for %s. Expected %d", len(colors), s.name, s.length))
+		panic(fmt.Sprintf("illegal colors length (%d) received for %s. Expected %d", len(colors), s.name, s.length))
 	}
 	s.channel <- colors
 }

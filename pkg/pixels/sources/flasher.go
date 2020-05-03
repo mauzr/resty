@@ -17,7 +17,6 @@ limitations under the License.
 package sources
 
 import (
-	"fmt"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/pixels/color"
@@ -45,10 +44,10 @@ func NewFlasher(lower, upper color.RGBW, duration time.Duration) Loop {
 // Setup the loop for use. May be called only once.
 func (f *flasher) Setup(length int, framerate int) {
 	if f.length != 0 {
-		panic(fmt.Errorf("reused source"))
+		panic("reused source")
 	}
 	if length == 0 {
-		panic(fmt.Errorf("zero length"))
+		panic("zero length")
 	}
 	f.length = length
 	stepLength := f.duration.Seconds() * float64(framerate)

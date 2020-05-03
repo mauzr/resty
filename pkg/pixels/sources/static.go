@@ -17,8 +17,6 @@ limitations under the License.
 package sources
 
 import (
-	"fmt"
-
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
@@ -35,10 +33,10 @@ func NewStatic(target color.RGBW) Loop {
 // Setup the loop for use. May be called only once.
 func (s *static) Setup(length int, _ int) {
 	if s.length != 0 {
-		panic(fmt.Errorf("reused source"))
+		panic("reused source")
 	}
 	if length == 0 {
-		panic(fmt.Errorf("zero length"))
+		panic("zero length")
 	}
 	s.length = length
 }

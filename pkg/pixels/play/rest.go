@@ -18,7 +18,6 @@ package play
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/io/rest"
@@ -79,7 +78,7 @@ func AddPartChangerEndpoint(c rest.REST, path string, status <-chan string, chan
 				return
 			case err, ok := <-response:
 				if !ok {
-					panic(fmt.Errorf("closed response channel"))
+					panic("closed response channel")
 				}
 				if err != nil {
 					query.RequestError = err

@@ -30,10 +30,10 @@ import (
 )
 
 type operation struct {
-	txBuf       uint64 //nolint
+	txBuf       uint64
 	rxBuf       uint64 //nolint
 	len         uint32 //nolint
-	speedHz     uint32 //nolint
+	speedHz     uint32
 	delayUsecs  uint16 //nolint
 	bitsPerWord uint8  //nolint
 	csChange    uint8  //nolint
@@ -44,7 +44,7 @@ type operation struct {
 
 func channelToByte(channel float64) uint8 {
 	if channel < 0.0 || channel > 1.0 {
-		panic(fmt.Errorf("illegal channel value: %f", channel))
+		panic(fmt.Sprintf("illegal channel value: %f", channel))
 	}
 	return uint8(255.0 * channel)
 }
