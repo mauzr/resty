@@ -18,9 +18,11 @@ limitations under the License.
 package pixels
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"os"
+	"regexp"
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/pixels/strip"
@@ -69,8 +71,38 @@ func createLut() ([][]byte, int) {
 	return lut, translationFactor
 }
 
+func determineSpeed() uint32 {
+	file, err := os.Open("/proc/cpuinfo")
+	if err != nil {
+		panic(err)
+	}
+
+	var revision string
+
+	matcher := regexp.MustCompile(`Revision\W+:\W+(\w+)`)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := matcher.FindStringSubmatch(line)
+		if parts != nil {
+			revision = parts[1]
+		}
+	}
+	_ = file.Close()
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+	speed, ok := map[string]uint32{"c03112": 19000000, "a22082": 6400000}[revision]
+	if !ok {
+		panic("speed not found")
+	}
+	return speed
+}
+
 // New creates a new manager the outputs pixel data from a strip input to the actual pixels.
 func New(input strip.Input, path string, framerate int) <-chan error {
+	speed := determineSpeed()
+
 	errors := make(chan error)
 	go func() {
 		defer close(errors)
@@ -107,7 +139,7 @@ func New(input strip.Input, path string, framerate int) <-chan error {
 			arg := operation{
 				txBuf:   uint64(uintptr(unsafe.Pointer(&translated[0]))),
 				len:     uint32(len(translated)),
-				speedHz: 19000000,
+				speedHz: speed,
 			}
 			err := f.Ioctl(0x40206b00, uintptr(unsafe.Pointer(&arg)))()
 			if err != nil {

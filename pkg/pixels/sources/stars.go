@@ -45,7 +45,7 @@ func (c *stars) Setup(length int, framerate int) {
 	c.length = length
 	c.factors = make([]float64, length)
 	c.changes = make([]float64, length)
-	c.speed = 0.05 * float64(framerate)
+	c.speed = 0.001 * float64(framerate)
 	for i := range c.factors {
 		c.factors[i] = 1.0
 		c.changes[i] = rand.Float64()*c.speed + 0.01

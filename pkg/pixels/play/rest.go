@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	partChangeForm = `
+	// PartChangeForm ist the HTML5 form preseted to the user when chaning parts.
+	PartChangeForm = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -54,7 +55,7 @@ func AddPartChangerEndpoint(c rest.REST, path string, status <-chan string, chan
 			query.ResponseBody = []byte(s)
 		})
 	}
-	c.Endpoint(path, partChangeForm, func(query *rest.Request) {
+	c.Endpoint(path, PartChangeForm, func(query *rest.Request) {
 		args := struct {
 			Stance string `json:"stance"`
 		}{}
