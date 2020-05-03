@@ -26,7 +26,7 @@ type RGBW struct {
 	Red, Green, Blue, White float64
 }
 
-// RandomeRGBW for testing.
+// RandomRGBW for testing.
 func RandomRGBW() RGBW {
 	return RGBW{rand.Float64(), rand.Float64(), rand.Float64(), rand.Float64()}
 }

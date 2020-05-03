@@ -29,7 +29,7 @@ type stars struct {
 	factors, changes []float64
 }
 
-// NewStarts returns a Loop that lets the pixels imitate starts.
+// NewStars returns a Loop that lets the pixels imitate starts.
 func NewStars(theme color.RGBW) Loop {
 	return &stars{0, 0, color.Off.MixWith(0.1, theme), theme, nil, nil}
 }

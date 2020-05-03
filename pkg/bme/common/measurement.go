@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package common contains the measurement struct that is used by all implementatons.
 package common
 
 import (

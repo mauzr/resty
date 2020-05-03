@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package influxdb interfaces with influxdb TSDB instance.
 package influxdb
 
 import (
@@ -35,6 +36,7 @@ type Measurement struct {
 	Timestamp time.Time
 }
 
+// Client represents an influxdb connection that can receive measurements.
 type Client interface {
 	Write(ctx context.Context, bucket string, measurements ...Measurement) error
 }
@@ -99,7 +101,7 @@ func (c client) Write(ctx context.Context, bucket string, measurements ...Measur
 		case response.StatusCode != http.StatusNoContent:
 			err = rest.HTTPError{StatusCode: response.StatusCode}
 		default:
-			response.Body.Close()
+			_ = response.Body.Close()
 		}
 	}
 	return err

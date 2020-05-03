@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package h264splitter contains splitters for H264 streams.
 package h264splitter
 
 import (
@@ -24,11 +25,15 @@ import (
 	"go.eqrx.net/mauzr/pkg/camera/raspivid"
 )
 
+// Data is the result of the splitter.
 type Data struct {
+	// Frame is an individual NAL frame.
 	Frame []byte
-	Err   error
+	// Err is an error that was received from the stream source or occurred in the splitter.
+	Err error
 }
 
+// New creates a splitter the separates H264 NAL frames.
 func New(source <-chan raspivid.Data) <-chan Data {
 	feed := make(chan Data)
 	go func() {

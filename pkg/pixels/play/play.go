@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package play contains logical handling of pixel color sources.
 package play
 
 import (
@@ -35,10 +36,16 @@ func DefaultParts() map[string]sources.Loop {
 	}
 }
 
+// Request of a part change to the play manager.
 type Request struct {
+	// Response receives possible errors the occurred while processing it. Must have capacity greater 1 or the manager will panic.
 	Response chan<- error
-	Part     string
+	// Part the play next.
+	Part string
 }
+
+// ErrUnknownPart happens when a part was requested that is now known.
+var ErrUnknownPart = errors.New("unknown part")
 
 func setupParts(parts map[string]sources.Loop, output strip.Output, framerate int) {
 	alreadySetup := make([]sources.Loop, 0)
@@ -68,8 +75,7 @@ func shutdown(colors []color.RGBW, output strip.Output, framerate int) {
 	}
 }
 
-var ErrUnknownPart = errors.New("unknown part")
-
+// New creates a new play manager.
 func New(parts map[string]sources.Loop, output strip.Output, framerate int, requests <-chan Request) <-chan string {
 	if framerate < 0 {
 		panic("framerate must be > 0")

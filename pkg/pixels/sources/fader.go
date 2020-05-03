@@ -29,7 +29,7 @@ type fader struct {
 	current, steps []color.RGBW
 }
 
-// NewFlasher returns a transition from the later set start and end in the given time.
+// NewFader returns a transition from the later set start and end in the given time.
 func NewFader(duration time.Duration) Transition {
 	return &fader{duration, 0, nil, nil}
 }

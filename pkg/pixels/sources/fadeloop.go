@@ -33,6 +33,7 @@ type fadeLoop struct {
 	currentFader Transition
 }
 
+// NewFadeLoop creates a new fade loop.
 func NewFadeLoop(lower, upper color.RGBW, duration time.Duration) Loop {
 	return &fadeLoop{
 		0,

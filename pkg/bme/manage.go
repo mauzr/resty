@@ -24,25 +24,33 @@ import (
 	"go.eqrx.net/mauzr/pkg/bme/common"
 )
 
-// Measurments represents a taken measurement.
+// Measurement represents a taken measurement.
 type Measurement = common.Measurement
 
+// Chip represents a concrete model implementation.
 type Chip interface {
 	Measure() (Measurement, error)
 	Reset() error
 }
 
+// Response to a query.
 type Response struct {
+	// Measurement is the resulting measurement.
 	Measurement Measurement
-	Err         error
+	// Err is an error that was encountered or nil.
+	Err error
 }
 
+// Request to produce a measurement.
 type Request struct {
+	// Response receives exactly one response and is closed afterwards.
+	// This channel must have a buffer of at least one or the manager will panic.
 	Response chan<- Response
-	MaxAge   time.Time
+	// MaxAge indicates how old the measurement may be to be considered valid for this request.
+	MaxAge time.Time
 }
 
-func New(chip Chip, offsets Measurement, requests <-chan Request) {
+func new(chip Chip, offsets Measurement, requests <-chan Request) {
 	go func() {
 		isReady := false
 		var lastMeasurement *Measurement
@@ -87,10 +95,12 @@ func New(chip Chip, offsets Measurement, requests <-chan Request) {
 	}()
 }
 
+// NewBME280 creates a new manager for a BME280 chip. Offset will be added to created measurements.
 func NewBME280(bus string, address uint16, offsets Measurement, requests <-chan Request) {
-	New(bme280.New(bus, address), offsets, requests)
+	new(bme280.New(bus, address), offsets, requests)
 }
 
+// NewBME680 creates a new manager for a BME280 chip. Offset will be added to created measurements.
 func NewBME680(bus string, address uint16, offsets Measurement, requests <-chan Request) {
-	New(bme680.New(bus, address), offsets, requests)
+	new(bme680.New(bus, address), offsets, requests)
 }

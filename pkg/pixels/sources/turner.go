@@ -29,6 +29,7 @@ type turner struct {
 	interval time.Duration
 }
 
+// NewTurner creates a new turner source.
 func NewTurner(theme color.RGBW, interval time.Duration) Loop {
 	return &turner{0, 0, theme, interval}
 }

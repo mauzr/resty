@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package io contains packages that provide interfacing that is used by other code instead of exposing itself via REST.
+// io also provides helpers for the batch execution of IO tasks.
 package io
 
 import (

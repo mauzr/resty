@@ -23,11 +23,13 @@ import (
 	"net/http"
 )
 
+// HTTPError represents an HTTP error in combination with an HTTP status code.
 type HTTPError struct {
 	StatusCode int
 	Cause      error
 }
 
+// Error returns the error as string.
 func (h HTTPError) Error() string {
 	switch {
 	case h.Cause != nil:
@@ -39,6 +41,7 @@ func (h HTTPError) Error() string {
 	}
 }
 
+// Unwrap the causing error.
 func (h HTTPError) Unwrap() error {
 	return h.Cause
 }
@@ -59,15 +62,14 @@ func (r *rest) GetJSON(ctx context.Context, url string, target interface{}) erro
 	if err != nil {
 		return &HTTPError{0, err}
 	}
-	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return &HTTPError{response.StatusCode, nil}
+		err = &HTTPError{response.StatusCode, nil}
+	} else if err = json.NewDecoder(response.Body).Decode(&target); err != nil {
+		err = &HTTPError{0, err}
 	}
-	if err := json.NewDecoder(response.Body).Decode(&target); err != nil {
-		return &HTTPError{0, err}
-	}
-	return nil
+	_ = response.Body.Close()
+	return err
 }
 
 // PostRaw from the given reader to a remote site.

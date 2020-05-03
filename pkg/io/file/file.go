@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package file contains tools to run operations in batch.
 package file
 
 import (

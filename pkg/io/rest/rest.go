@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package rest contains tooling for server and client side REST interaction.
 package rest
 
 import (

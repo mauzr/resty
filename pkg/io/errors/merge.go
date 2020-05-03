@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package errors extends the generic errors package with error channel functionality.
 package errors
 
 import (
@@ -22,6 +23,26 @@ import (
 	"sync"
 )
 
+// MultiError contains multiple errors (that may occurred independen from each other).
+type MultiError struct {
+	Errs []error
+}
+
+// Error returns the error as string.
+func (m MultiError) Error() string {
+	return fmt.Sprintf("encountered multiple errors: %v", m.Errs)
+}
+
+// Is is imported from the stdlib errors package.
+var Is = errors.Is
+
+// As is imported from the stdlib errors package.
+var As = errors.As
+
+// New is imported from the stdlib errors package.
+var New = errors.New
+
+// Merge multiple error channels into one output channel. The given onError function is called on every received error (may be nil).
 func Merge(onError func(), errors ...<-chan error) <-chan error {
 	merged := make(chan error)
 	wg := sync.WaitGroup{}
@@ -48,6 +69,7 @@ func Merge(onError func(), errors ...<-chan error) <-chan error {
 	return merged
 }
 
+// Collect all errors from an error channel and from the parameter list and merge them into one error.
 func Collect(source <-chan error, additional ...error) error {
 	errors := []error{}
 	if additional != nil {
@@ -71,16 +93,4 @@ func Collect(source <-chan error, additional ...error) error {
 		err = &MultiError{errors}
 	}
 	return err
-}
-
-var Is = errors.Is
-var As = errors.As
-var New = errors.New
-
-type MultiError struct {
-	Errs []error
-}
-
-func (m MultiError) Error() string {
-	return fmt.Sprintf("encountered multiple errors: %v", m.Errs)
 }

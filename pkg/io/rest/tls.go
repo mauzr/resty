@@ -21,12 +21,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 )
 
 // loadCA from a file.
 func loadCA(caPath string) *x509.CertPool {
 	pool := x509.NewCertPool()
-	ca, err := ioutil.ReadFile(caPath)
+	ca, err := ioutil.ReadFile(filepath.Clean(caPath))
 	if err != nil {
 		panic(fmt.Errorf("failed to load CA file from %v: %w", caPath, err))
 	}

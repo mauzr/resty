@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package program manages mauzr subcommand instances.
 package program
 
 import (
@@ -51,9 +52,9 @@ type Program struct {
 
 func listeners(binds []string) []net.Listener {
 	if pid, pidSet := os.LookupEnv("LISTEN_PID"); pidSet && strconv.Itoa(os.Getpid()) == pid {
-		os.Unsetenv("LISTEN_PID")
+		_ = os.Unsetenv("LISTEN_PID")
 		listenerCount, err := strconv.Atoi(os.Getenv("LISTEN_FDS"))
-		os.Unsetenv("LISTEN_FDS")
+		_ = os.Unsetenv("LISTEN_FDS")
 		switch {
 		case err != nil:
 			panic(fmt.Errorf("LISTEN_PID is set but LISTEN_FDS is invalid: %w", err))
@@ -84,16 +85,11 @@ func listeners(binds []string) []net.Listener {
 	return restListeners
 }
 
+// New creates a new program manager.
 func New() *Program {
 	runtimeCtx, programCancel := context.WithCancel(context.Background())
 	webserverCtx, webserverCancel := context.WithCancel(runtimeCtx)
-	program := &Program{
-		runtimeCtx,
-		[]<-chan error{},
-		nil,
-		nil,
-		nil,
-	}
+	program := &Program{runtimeCtx, []<-chan error{}, nil, nil, nil}
 
 	flags := pflag.FlagSet{}
 	flags.StringToStringP("tags", "", nil, "Tags to include in measurements")

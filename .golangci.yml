@@ -38,3 +38,12 @@ linters:
   - nolintlint
   - goerr113
   - godot
+issues:
+  include:
+  - EXC0001
+  - EXC0002
+  - EXC0003
+  - EXC0004
+  - EXC0005
+  - EXC0009
+  - EXC0010

@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package bme280 contains BME280 specific implementations.
 package bme280
 
 import (

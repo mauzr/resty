@@ -37,6 +37,7 @@ type Request struct {
 	Redirect                                  string
 }
 
+// ErrRequest happens when a HTTP request is invalid.
 var ErrRequest = errors.New("invalid request")
 
 // Args are parsed from the url into the given struct.

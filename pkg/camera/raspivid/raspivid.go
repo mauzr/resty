@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package raspivid interfaces with the raspivid program to grab a camera feed.
 package raspivid
 
 import (
@@ -24,6 +25,7 @@ import (
 	"strconv"
 )
 
+// Configuration specifies parameters for raspivid.
 type Configuration struct {
 	On                       bool
 	Width, Height, Framerate int
@@ -31,26 +33,38 @@ type Configuration struct {
 	Exposure                 string
 }
 
+// Data is a chunk of data read from the raspivid stdout.
 type Data struct {
 	Data []byte
 	Err  error
 }
 
-var ErrConfigureation = errors.New("invalid configuration")
+// Request is a request to start a raspivid instance.
+type Request struct {
+	// Configuration for the raspivid program.
+	Configuration Configuration
+	// Response receives errors encountered by the raspivid manager. this channel must have a capacity greater 1 or the manager will panic.
+	Response chan<- error
+}
+
+// ErrConfiguration means that an invalid configuration was passed.
+var ErrConfiguration = errors.New("invalid configuration")
+
+// ErrProcess means that raspivid broke for some reason.
 var ErrProcess = errors.New("raspivid process failed")
 
 func (c Configuration) arguments() ([]string, error) {
 	if !c.On {
-		return nil, fmt.Errorf("%w: not on", ErrConfigureation)
+		return nil, fmt.Errorf("%w: not on", ErrConfiguration)
 	}
 	if c.Width <= 0 {
-		return nil, fmt.Errorf("%w: invalid width", ErrConfigureation)
+		return nil, fmt.Errorf("%w: invalid width", ErrConfiguration)
 	}
 	if c.Height <= 0 {
-		return nil, fmt.Errorf("%w: invalid height", ErrConfigureation)
+		return nil, fmt.Errorf("%w: invalid height", ErrConfiguration)
 	}
 	if c.Framerate <= 0 {
-		return nil, fmt.Errorf("%w: invalid framerate", ErrConfigureation)
+		return nil, fmt.Errorf("%w: invalid framerate", ErrConfiguration)
 	}
 	width := strconv.Itoa(c.Width)
 	height := strconv.Itoa(c.Height)
@@ -64,7 +78,7 @@ func (c Configuration) arguments() ([]string, error) {
 		}
 	}
 	if !exvalid {
-		return nil, fmt.Errorf("%w: illegal exposure mode", ErrConfigureation)
+		return nil, fmt.Errorf("%w: illegal exposure mode", ErrConfiguration)
 	}
 
 	exposure := c.Exposure
@@ -99,11 +113,6 @@ func stopCmd(cmd *exec.Cmd) (err error) {
 		err = cmd.Wait()
 	}
 	return err
-}
-
-type Request struct {
-	Configuration Configuration
-	Response      chan<- error
 }
 
 func handleStreaming(requests <-chan Request, readAmount int, dataBuffer []byte, data chan<- Data) (nextRequest *Request, hasNextRequest bool) {
@@ -171,6 +180,7 @@ func handleCommand(stdout, stderr io.Reader, request *Request, requests <-chan R
 	}
 }
 
+// New creates a new manager for a raspivid source.
 func New(requests <-chan Request) <-chan Data {
 	data := make(chan Data)
 

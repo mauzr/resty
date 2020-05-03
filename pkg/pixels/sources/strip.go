@@ -63,6 +63,7 @@ func (i *input) Pop() []color.RGBW {
 	return next
 }
 
+// FromInput creates a new source from an strip input.
 func FromInput(i strip.Input) Loop {
 	return &input{0, i, nil, nil}
 }

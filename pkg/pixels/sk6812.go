@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package pixels manages hardware pixels like SK6812 chains.
 package pixels
 
 import (
@@ -68,6 +69,7 @@ func createLut() ([][]byte, int) {
 	return lut, translationFactor
 }
 
+// New creates a new manager the outputs pixel data from a strip input to the actual pixels.
 func New(input strip.Input, path string, framerate int) <-chan error {
 	errors := make(chan error)
 	go func() {

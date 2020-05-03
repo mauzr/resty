@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package pkg contains the code main code for this project
 package pkg
 
 import (
@@ -96,7 +97,7 @@ func healthcheckCmd(p *program.Program) *cobra.Command {
 					ctx, cancel := context.WithTimeout(p.Ctx, 4*time.Second)
 					defer cancel()
 					r, err := p.Rest.GetRaw(ctx, fmt.Sprintf("https://%s/health", n))
-					r.Body.Close()
+					_ = r.Body.Close()
 					results <- err == nil && r.StatusCode == http.StatusOK
 				}(name)
 			}

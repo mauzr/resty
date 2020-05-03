@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package tradfri interfaces with a tradfri gateway and controls lights and stuff.
 package tradfri
 
 import (
@@ -27,11 +28,13 @@ import (
 
 const identityLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+// CoAPError represents an error that happened in conjunction with a COaP request.
 type CoAPError struct {
 	StatusCode coap.COAPCode
 	Cause      error
 }
 
+// Error returns the error as string.
 func (c CoAPError) Error() string {
 	switch {
 	case c.Cause != nil:
@@ -43,6 +46,7 @@ func (c CoAPError) Error() string {
 	}
 }
 
+// Unwrap returns the wrapped error.
 func (c CoAPError) Unwrap() error {
 	return c.Cause
 }
