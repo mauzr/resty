@@ -72,25 +72,31 @@ func Merge(onError func(), errors ...<-chan error) <-chan error {
 // Collect all errors from an error channel and from the parameter list and merge them into one error.
 func Collect(source <-chan error, additional ...error) error {
 	errors := []error{}
-	if additional != nil {
-		errors = append(errors, additional...)
+
+	for _, err := range additional {
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
+
 	if source != nil {
 		for {
 			err, ok := <-source
-			if ok {
+			if !ok {
 				break
+			}
+			if err == nil {
+				panic("err should not be nil")
 			}
 			errors = append(errors, err)
 		}
 	}
-	var err error
 	switch len(errors) {
 	case 0:
+		return nil
 	case 1:
-		err = errors[0]
+		return errors[0]
 	default:
-		err = &MultiError{errors}
+		return &MultiError{errors}
 	}
-	return err
 }

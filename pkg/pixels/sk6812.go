@@ -92,7 +92,11 @@ func determineSpeed() uint32 {
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
-	speed, ok := map[string]uint32{"c03112": 19000000, "a22082": 6400000}[revision]
+	speed, ok := map[string]uint32{
+		"c03112": 19000000,
+		"a22082": 6400000,
+		"a02082": 6400000,
+	}[revision]
 	if !ok {
 		panic("speed not found")
 	}

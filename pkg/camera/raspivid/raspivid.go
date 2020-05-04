@@ -166,13 +166,18 @@ func handleCommand(stdout, stderr io.Reader, request *Request, requests <-chan R
 			if !hasNext {
 				return nil
 			}
-			return next
+			if next != nil {
+				return next
+			}
+			request = nil
 		case err == nil:
 			next, hasNext := handleStreaming(requests, n, dataBuffer, data)
 			if !hasNext {
 				return nil
 			}
-			return next
+			if next != nil {
+				return next
+			}
 		case err != nil:
 			data <- Data{nil, fmt.Errorf("raspivid failed: %w", err)}
 			return nil
