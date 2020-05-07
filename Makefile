@@ -9,19 +9,23 @@ export IMAGE=docker.pkg.github.com/eqrx/mauzr/mauzr
 all: dist
 
 .PHONY: dist/amd64/mauzr
-dist/amd64/mauzr:
+dist/amd64/mauzr: generate
 	GOARCH=amd64 go build -trimpath -ldflags "$(GOLDFLAGS)" -o $@ ./cmd/mauzr
 
 .PHONY: dist/arm64/mauzr
-dist/arm64/mauzr:
+dist/arm64/mauzr: generate
 	GOARCH=arm64 go build -trimpath -ldflags "$(GOLDFLAGS)" -o $@ ./cmd/mauzr
 
 .PHONY: dist/arm/mauzr
-dist/arm/mauzr:
+dist/arm/mauzr: generate
 	GOARCH=arm go build -trimpath -ldflags "$(GOLDFLAGS)" -o $@ ./cmd/mauzr
 
 .PHONY: dist
 dist: dist/amd64/mauzr dist/arm64/mauzr dist/arm/mauzr
+
+.PHONY: generate
+generate:
+	go generate ./...
 
 .PHONY: benchmark
 benchmark:

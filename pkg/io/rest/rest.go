@@ -29,6 +29,8 @@ import (
 	"time"
 )
 
+//go:generate esc -o static.go --pkg rest --prefix=../../../web/ ../../../web/
+
 // REST provides the interface to REST io.
 type REST interface {
 	// GetJSON from a remote site. It gets serialized into the given interface.
@@ -117,6 +119,7 @@ func New(ctx context.Context, serviceName string, listeners []net.Listener) REST
 			Handler:           rest.mux,
 		}
 	}
+	rest.mux.Handle("/favicon.ico", http.FileServer(FS(false)))
 	rest.mux.HandleFunc("/debug/pprof/", pprof.Index)
 	rest.mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
 	rest.mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
