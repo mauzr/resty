@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -37,10 +36,12 @@ type REST interface {
 	GetJSON(context.Context, string, interface{}) error
 	// GetRaw response from a remote site.
 	GetRaw(context.Context, string) (*http.Response, error)
+	// GetString from a remote site.
+	GetString(context.Context, string, int) (string, error)
 	// PostRaw from the given reader to a remote site.
 	PostRaw(context.Context, string, io.Reader) (*http.Response, error)
 	// Endpoint provides a server end point for a rest application. The given handler is called on each invoction.
-	Endpoint(path, form string, queryHandler func(query *Request))
+	Endpoint(path string, queryHandler func(query *Request))
 	// Serve blocks and runs the configured http servers.
 	Serve() []<-chan error
 	// AddDefaultResponseHeader to the given header.
@@ -125,7 +126,7 @@ func New(ctx context.Context, serviceName string, listeners []net.Listener) REST
 	rest.mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	rest.mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	rest.mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	rest.Endpoint("/health", "I am alive!", func(r *Request) { r.RequestError = fmt.Errorf("%w: no arguments supported", ErrRequest) })
+	rest.Endpoint("/health", func(r *Request) { r.ResponseBody = []byte("I am alive!") })
 
 	return &rest
 }

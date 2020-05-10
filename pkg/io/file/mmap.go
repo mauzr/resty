@@ -74,3 +74,26 @@ func (m *memoryMap) Uint32Register(destination *[]uint32) io.Action {
 		return nil
 	}
 }
+
+// Unmap file from memory.
+func (f *file) Unmap(memoryMap *[]byte) io.Action {
+	return func() error {
+		defer func() { *memoryMap = nil }()
+		if err := unix.Munmap(*memoryMap); err != nil {
+			return fmt.Errorf("could not unmap memory: %w", err)
+		}
+		return nil
+	}
+}
+
+// Map file to memory.
+func (f *file) Map(offset int64, length, prot, flags int, memoryMap *[]byte) io.Action {
+	return func() error {
+		if mmem, err := unix.Mmap(int(f.handle.Fd()), offset, length, prot, flags); err == nil {
+			*memoryMap = mmem
+		} else {
+			return fmt.Errorf("could not map memory: %w", err)
+		}
+		return nil
+	}
+}

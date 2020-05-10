@@ -63,7 +63,7 @@ func send(request interface{}, group string, peer *dtls.Peer) error {
 func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 	mutex := sync.Mutex{}
 	lastPower := false
-	c.Endpoint(fmt.Sprintf("/%s/status", name), "", func(query *rest.Request) {
+	c.Endpoint(fmt.Sprintf("/%s/status", name), func(query *rest.Request) {
 		mutex.Lock()
 		query.ResponseBody = []byte("off")
 		if lastPower {
@@ -71,7 +71,11 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 		}
 		mutex.Unlock()
 	})
-	c.Endpoint(fmt.Sprintf("/%s", name), form, func(query *rest.Request) {
+	c.Endpoint(fmt.Sprintf("/%s", name), func(query *rest.Request) {
+		if !query.HasArgs {
+			query.ResponseBody = []byte(form)
+			return
+		}
 		args := struct {
 			Power bool     `json:"power,string"`
 			Level *float64 `json:"level,string"`

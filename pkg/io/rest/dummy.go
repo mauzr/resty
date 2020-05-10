@@ -48,7 +48,7 @@ func (d dummy) AddDefaultResponseHeader(http.Header) {}
 func (d dummy) Serve() []<-chan error { return nil }
 
 // Endpoint provides a server end point for a rest application. The given handler is called on each invoction.
-func (d dummy) Endpoint(path, form string, queryHandler func(query *Request)) {}
+func (d dummy) Endpoint(path string, queryHandler func(query *Request)) {}
 
 // GetJSON from a remote site. It gets serialized into the given interface.
 func (d dummy) GetJSON(context.Context, string, interface{}) error { return nil }
@@ -56,6 +56,10 @@ func (d dummy) GetJSON(context.Context, string, interface{}) error { return nil 
 // GetRaw response from a remote site.
 func (d dummy) GetRaw(context.Context, string) (*http.Response, error) {
 	return &http.Response{Body: &BodyDummy{}}, nil
+}
+
+func (d dummy) GetString(context.Context, string, int) (string, error) {
+	return "", nil
 }
 
 // PostRaw from the given reader to a remote site.

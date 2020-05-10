@@ -1,6 +1,4 @@
 KERNEL=="i2c-1*", GROUP="mauzr" MODE="0660"
 KERNEL=="ttyUSB*", GROUP="mauzr" MODE="0660"
 KERNEL=="spidev*", GROUP="mauzr" MODE="0660"
-SUBSYSTEM=="gpio*", PROGRAM="/bin/sh -c 'chown -R root:mauzr /sys/class/gpio && chmod -R 775 /sys/class/gpio; chown -R root:mauzr /sys/devices/virtual/gpio && chmod -R 775 /sys/devices/virtual/gpio; chown -R root:mauzr /sys/devices/platform/soc/*.gpio/gpio && chmod -R 775 /sys/devices/platform/soc/*.gpio/gpio'"
-SUBSYSTEM=="gpio", KERNEL=="gpiochip*", ACTION=="add", PROGRAM="/bin/sh -c 'chown root:mauzr /sys/class/gpio/export /sys/class/gpio/unexport ; chmod 220 /sys/class/gpio/export /sys/class/gpio/unexport'"
-SUBSYSTEM=="gpio", KERNEL=="gpio*", ACTION=="add", PROGRAM="/bin/sh -c 'chown root:mauzr /sys%p/active_low /sys%p/direction /sys%p/edge /sys%p/value ; chmod 660 /sys%p/active_low /sys%p/direction /sys%p/edge /sys%p/value'"
+KERNEL=="gpiochip*", GROUP="mauzr" MODE="0660"

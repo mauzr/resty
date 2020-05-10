@@ -27,7 +27,7 @@ import (
 
 // setupHandler creates a http handler that handles measurements with the given manager.
 func setupHandler(c rest.REST, requests chan<- Request, tags map[string]string) {
-	c.Endpoint("/measurement", "", func(query *rest.Request) {
+	c.Endpoint("/measurement", func(query *rest.Request) {
 		args := struct {
 			MaxAge string `json:"maxAge"`
 		}{}

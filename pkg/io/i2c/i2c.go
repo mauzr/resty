@@ -38,15 +38,6 @@ type Device interface {
 	WriteRead(source []byte, destination []byte) io.Action
 }
 
-const (
-	// write flags an operation as write.
-	write = 0
-	// read flags an operation as read.
-	read = 1
-	// ioctl is the ioctl operation code for i2c.
-	ioctl = 0x0707
-)
-
 // operation represents an i2c operation.
 type operation struct {
 	// addr is the I2C device address.
@@ -83,10 +74,11 @@ func (d *device) Close() io.Action {
 
 // WriteRead execute an I2C write followed by a read in the same transaction.
 func (d *device) WriteRead(source []byte, destination []byte) io.Action {
+	ioctl := uintptr(0x0707) // I2C IOCTL does not follow usual naming for some reason.
 	return func() error {
 		parts := []operation{
-			{addr: d.address, flags: write, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},
-			{addr: d.address, flags: read, len: uint16(len(destination)), buf: uintptr(unsafe.Pointer(&destination[0]))},
+			{addr: d.address, flags: 0, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},           // write
+			{addr: d.address, flags: 1, len: uint16(len(destination)), buf: uintptr(unsafe.Pointer(&destination[0]))}, // read
 		}
 		msg := operations{msgs: uintptr(unsafe.Pointer(&parts[0])), nmsgs: 2}
 
@@ -99,6 +91,7 @@ func (d *device) WriteRead(source []byte, destination []byte) io.Action {
 
 // Write to an I2C device.
 func (d *device) Write(source ...byte) io.Action {
+	ioctl := uintptr(0x0707) // I2C IOCTL does not follow usual naming for some reason.
 	return func() error {
 		parts := []operation{
 			{addr: d.address, flags: 0, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},

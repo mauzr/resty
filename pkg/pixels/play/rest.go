@@ -50,12 +50,16 @@ const (
 // AddPartChangerEndpoint that will listen for part change requests.
 func AddPartChangerEndpoint(c rest.REST, path string, status <-chan string, changers ...chan<- Request) {
 	if status != nil {
-		c.Endpoint(path+"/status", "", func(query *rest.Request) {
+		c.Endpoint(path+"/status", func(query *rest.Request) {
 			s := <-status
 			query.ResponseBody = []byte(s)
 		})
 	}
-	c.Endpoint(path, PartChangeForm, func(query *rest.Request) {
+	c.Endpoint(path, func(query *rest.Request) {
+		if !query.HasArgs {
+			query.ResponseBody = []byte(PartChangeForm)
+			return
+		}
 		args := struct {
 			Stance string `json:"stance"`
 		}{}

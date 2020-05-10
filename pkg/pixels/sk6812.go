@@ -108,6 +108,7 @@ func New(input strip.Input, path string, framerate int) <-chan error {
 	speed := determineSpeed()
 
 	errors := make(chan error)
+	ioctl := file.IoctlRequestNumber(false, true, unsafe.Sizeof(operation{}), 0x6b, 0)
 	go func() {
 		defer close(errors)
 		lut, translationFactor := createLut()
@@ -145,7 +146,7 @@ func New(input strip.Input, path string, framerate int) <-chan error {
 				len:     uint32(len(translated)),
 				speedHz: speed,
 			}
-			err := f.Ioctl(0x40206b00, uintptr(unsafe.Pointer(&arg)))()
+			err := f.Ioctl(ioctl, uintptr(unsafe.Pointer(&arg)))()
 			if err != nil {
 				errors <- err
 				return

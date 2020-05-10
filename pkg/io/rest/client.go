@@ -19,6 +19,8 @@ package rest
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -70,6 +72,32 @@ func (r *rest) GetJSON(ctx context.Context, url string, target interface{}) erro
 	}
 	_ = response.Body.Close()
 	return err
+}
+
+// GetString from a remote site.
+func (r *rest) GetString(ctx context.Context, url string, maxLength int) (string, error) {
+	response, err := r.GetRaw(ctx, url)
+	if err != nil {
+		return "", &HTTPError{0, err}
+	}
+
+	var result string
+	if response.StatusCode != http.StatusOK {
+		err = &HTTPError{response.StatusCode, nil}
+	} else {
+		buffer := make([]byte, maxLength)
+		var n int
+		n, err = response.Body.Read(buffer)
+		if n < 1 {
+			err = fmt.Errorf("%w: status is too short", io.ErrUnexpectedEOF)
+		}
+		if errors.Is(err, io.EOF) {
+			err = nil
+		}
+		result = string(buffer[:n])
+	}
+	_ = response.Body.Close()
+	return result, err
 }
 
 // PostRaw from the given reader to a remote site.

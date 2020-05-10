@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/sys/unix"
-
 	"go.eqrx.net/mauzr/pkg/io"
 )
 
@@ -37,7 +35,7 @@ type File interface {
 	Write([]byte) io.Action
 	// WriteString writes a string to the file.
 	WriteString(string) io.Action
-	// WriteBinary uses binary.Write to write and interface to the file.
+	// WriteBinary uses binary.Write to write an interface to the file.
 	WriteBinary(order binary.ByteOrder, data interface{}) io.Action
 	// SeekTo a location in the file.
 	SeekTo(int64) io.Action
@@ -45,6 +43,8 @@ type File interface {
 	Read([]byte) io.Action
 	// ReadString reads a string from the file.
 	ReadString(*string, int) io.Action
+	// ReadBinary uses binary.Write to read an interface from the file.
+	ReadBinary(order binary.ByteOrder, data interface{}) io.Action
 	// Ioctl execute an IOCTL command.
 	Ioctl(uintptr, uintptr) io.Action
 	// Unmap file from memory.
@@ -64,6 +64,15 @@ func New(path string) File {
 	return &file{path: path}
 }
 
+// NewFromFd creates a new file from the given file descriptor.
+func NewFromFd(fd uintptr, name string) File {
+	f := file{name, os.NewFile(fd, name)}
+	if f.handle == nil {
+		panic("passed fd is invalid")
+	}
+	return &f
+}
+
 // Open the file.
 func (f *file) Open(flags int, mask os.FileMode) io.Action {
 	return func() error {
@@ -72,29 +81,6 @@ func (f *file) Open(flags int, mask os.FileMode) io.Action {
 			return fmt.Errorf("could not not open file %v with flags %v and mask %v: %w", f.path, flags, mask, err)
 		}
 		f.handle = h
-		return nil
-	}
-}
-
-// Unmap file from memory.
-func (f *file) Unmap(memoryMap *[]byte) io.Action {
-	return func() error {
-		defer func() { *memoryMap = nil }()
-		if err := unix.Munmap(*memoryMap); err != nil {
-			return fmt.Errorf("could not unmap memory: %w", err)
-		}
-		return nil
-	}
-}
-
-// Map file to memory.
-func (f *file) Map(offset int64, length, prot, flags int, memoryMap *[]byte) io.Action {
-	return func() error {
-		if mmem, err := unix.Mmap(int(f.handle.Fd()), offset, length, prot, flags); err == nil {
-			*memoryMap = mmem
-		} else {
-			return fmt.Errorf("could not map memory: %w", err)
-		}
 		return nil
 	}
 }
@@ -122,7 +108,7 @@ func (f *file) Write(data []byte) io.Action {
 	}
 }
 
-// WriteBinary uses binary.Write to write and interface to the file.
+// WriteBinary uses binary.Write to write an interface to the file.
 func (f *file) WriteBinary(order binary.ByteOrder, data interface{}) io.Action {
 	return func() error {
 		err := binary.Write(f.handle, order, data)
@@ -180,11 +166,12 @@ func (f *file) ReadString(destination *string, length int) io.Action {
 	}
 }
 
-// Ioctl execute an IOCTL command.
-func (f *file) Ioctl(operation, argument uintptr) io.Action {
+// ReadBinary uses binary.Write to read an interface from the file.
+func (f *file) ReadBinary(order binary.ByteOrder, data interface{}) io.Action {
 	return func() error {
-		if _, _, errno := unix.Syscall(unix.SYS_IOCTL, f.handle.Fd(), operation, argument); errno != 0 {
-			return fmt.Errorf("ioctl %v failed with handle %v: %w", operation, f.handle.Name(), errno)
+		err := binary.Read(f.handle, order, data)
+		if err != nil {
+			return fmt.Errorf("could not binary read %v from file %v: %w", data, f.path, err)
 		}
 		return nil
 	}
