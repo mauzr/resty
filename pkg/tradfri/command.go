@@ -34,13 +34,13 @@ func SubCommand(p *program.Program) *cobra.Command {
 		Short: "Expose tradfri LEDs behind a gateway",
 		Long:  "Expose tradfri LEDs behind a gateway via REST",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			peer, err := connect(*gateway+":5684", *key)
+			connection, err := connect(*gateway, *key)
 			if err != nil {
 				return err
 			}
 
 			for name, group := range *mapping {
-				handleLamp(p.Rest, name, group, peer)
+				handleLamp(p.Rest, name, group, connection)
 			}
 			return nil
 		},

@@ -21,12 +21,12 @@ import (
 	"testing"
 
 	"go.eqrx.net/mauzr/pkg/pixels/color"
-
-	"github.com/stretchr/testify/assert"
+	"go.eqrx.net/mauzr/pkg/testing/assert"
 )
 
 // TestSplitStrip: If splitting strips works.
 func TestSplitStrip(t *testing.T) {
+	assert := assert.New(t)
 	colors := []color.RGBW{color.RandomRGBW(), color.RandomRGBW(), color.RandomRGBW()}
 	expected := [][]color.RGBW{{colors[0]}, {colors[1], colors[2]}}
 	whole := strip{"testInput", 3, make(chan []color.RGBW)}
@@ -38,17 +38,17 @@ func TestSplitStrip(t *testing.T) {
 		whole.Set(colors)
 		split0Value, split0Ok := split0.Get()
 		split1Value, split1Ok := split1.Get()
-		assert.True(t, split0Ok, "First part of the split was closed")
-		assert.True(t, split1Ok, "Second part of the split was closed")
+		assert.True(split0Ok, "First part of the split was closed")
+		assert.True(split1Ok, "Second part of the split was closed")
 		actual := [][]color.RGBW{split0Value, split1Value}
-		assert.Equalf(t, expected, actual, "Expect output %v, was %v", expected, actual)
+		assert.Equal(expected, actual, "Expect other output")
 	}
 
 	whole.Close()
 	_, split0Ok := split0.Get()
-	assert.False(t, split0Ok, "Split did not close the first output channel")
+	assert.False(split0Ok, "Split did not close the first output channel")
 	_, split1Ok := split1.Get()
-	assert.False(t, split1Ok, "Split did not close the second output channel")
+	assert.False(split1Ok, "Split did not close the second output channel")
 }
 
 // BenchmarkSplitStrip: How fast is strip splitting?
@@ -69,6 +69,7 @@ func BenchmarkSplitStrip(b *testing.B) {
 
 // TestMergeStrip: If merging strips works.
 func TestMergeStrip(t *testing.T) {
+	assert := assert.New(t)
 	expected := []color.RGBW{color.RandomRGBW(), color.RandomRGBW(), color.RandomRGBW()}
 	inputColors := [][]color.RGBW{{expected[0]}, {expected[1], expected[2]}}
 
@@ -81,7 +82,7 @@ func TestMergeStrip(t *testing.T) {
 		split0.Set(inputColors[0])
 		split1.Set(inputColors[1])
 		actual, ok := whole.Get()
-		assert.True(t, ok, "Expected channel not to be closed")
+		assert.True(ok, "Expected channel not to be closed")
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("Expect output %v, was %v", expected, actual)
 		}
@@ -90,11 +91,12 @@ func TestMergeStrip(t *testing.T) {
 	split0.Close()
 	split1.Close()
 	_, ok := whole.Get()
-	assert.False(t, ok, "Merge did not close output channel")
+	assert.False(ok, "Merge did not close output channel")
 }
 
 // TestMergeStripReplication: Test if merge handles shutdown of channels to merge correctly.
 func TestMergeStripReplication(t *testing.T) {
+	assert := assert.New(t)
 	expected := []color.RGBW{color.RandomRGBW(), color.RandomRGBW(), color.RandomRGBW()}
 
 	split0 := strip{"testInput0", 1, make(chan []color.RGBW)}
@@ -112,17 +114,17 @@ func TestMergeStripReplication(t *testing.T) {
 
 	go merge(whole, split0, split1)
 	actual, ok := whole.Get()
-	assert.True(t, ok, "Expected channel to be closed")
+	assert.True(ok, "Expected channel to be closed")
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Expect output %v, was %v", expected, actual)
 	}
 	actual, ok = whole.Get()
-	assert.True(t, ok, "Expected channel to be closed")
+	assert.True(ok, "Expected channel to be closed")
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Expect output %v, was %v", expected, actual)
 	}
 	_, ok = whole.Get()
-	assert.False(t, ok, "Merge did not close the channel")
+	assert.False(ok, "Merge did not close the channel")
 }
 
 // BenchmarkMergeStrip: How fast is strip merging?
@@ -145,25 +147,28 @@ func BenchmarkMergeStrip(b *testing.B) {
 
 // TestSplitStripTooSmall: Is a split into strips too small handled correctly?
 func TestSplitStripTooSmall(t *testing.T) {
+	assert := assert.New(t)
 	whole := strip{"testInput", 3, make(chan []color.RGBW)}
 	split0 := strip{"testOutput0", 1, make(chan []color.RGBW)}
 	split1 := strip{"testOutput1", 1, make(chan []color.RGBW)}
 	defer whole.Close()
-	assert.Panics(t, func() { split(whole, split0, split1) }, "Split accepted input that is too small")
+	assert.Panics(func() { split(whole, split0, split1) }, "Split accepted input that is too small")
 }
 
 // TestSplitStripTooLarge: Is a split into strips too large handled correctly?
 func TestSplitStripTooLarge(t *testing.T) {
+	assert := assert.New(t)
 	whole := strip{"testInput", 3, make(chan []color.RGBW)}
 	split0 := strip{"testOutput0", 2, make(chan []color.RGBW)}
 	split1 := strip{"testOutput1", 2, make(chan []color.RGBW)}
 	defer whole.Close()
-	assert.Panics(t, func() { split(whole, split0, split1) }, "Split accepted input that is too large")
+	assert.Panics(func() { split(whole, split0, split1) }, "Split accepted input that is too large")
 }
 
 // TestMergeStripTooSmall: Is a merge into a strip too small handled correctly?
 func TestMergeStripTooSmall(t *testing.T) {
-	assert.Panics(t, func() {
+	assert := assert.New(t)
+	assert.Panics(func() {
 		split0 := strip{"testInput0", 1, make(chan []color.RGBW)}
 		split1 := strip{"testInput1", 2, make(chan []color.RGBW)}
 		whole := strip{"testOutput", 7, make(chan []color.RGBW)}
@@ -173,7 +178,8 @@ func TestMergeStripTooSmall(t *testing.T) {
 
 // TestMergeStripTooLarge: Is a merge into a strip too large handled correctly?
 func TestMergeStripTooLarge(t *testing.T) {
-	assert.Panics(t, func() {
+	assert := assert.New(t)
+	assert.Panics(func() {
 		split0 := strip{"testInput0", 1, make(chan []color.RGBW)}
 		split1 := strip{"testInput1", 2, make(chan []color.RGBW)}
 		whole := strip{"testOutput", 1, make(chan []color.RGBW)}

@@ -64,7 +64,10 @@ func (r *Request) Args(target interface{}) error {
 
 // AddDefaultResponseHeader to the given header.
 func (r *rest) AddDefaultResponseHeader(header http.Header) {
-	header.Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+	header.Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+	header.Add("X-XSS-Protection", "1; mode=block")
+	header.Add("X-Frame-Options", "DENY")
+	header.Add("X-Content-Type-Options", "nosniff")
 }
 
 // Endpoint provides a server end point for a rest application. The given handler is called on each invoction.

@@ -19,24 +19,26 @@ package strip_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 	"go.eqrx.net/mauzr/pkg/pixels/strip"
+	"go.eqrx.net/mauzr/pkg/testing/assert"
 )
 
 // TestName: Test if name is correctly set.
 func TestName(t *testing.T) {
+	assert := assert.New(t)
 	assembly := strip.New()
 	name := "name"
 	strip := assembly.New(name, 3)
-	assert.Equal(t, name, strip.Name(), "Name is not correct")
+	assert.Equal(name, strip.Name(), "Name is not correct")
 }
 
 // TestInvalidSet: Test if strip blocks invalid value sets.
 func TestInvalidSet(t *testing.T) {
+	assert := assert.New(t)
 	assembly := strip.New()
 	name := "name"
 	strip := assembly.New(name, 3)
-	assert.Panics(t, func() { strip.Set(make([]color.RGBW, 8)) }, "Strip accepted value for set that is too large")
-	assert.Panics(t, func() { strip.Set(make([]color.RGBW, 1)) }, "Strip accepted value for set that is too small")
+	assert.Panics(func() { strip.Set(make([]color.RGBW, 8)) }, "Strip accepted value for set that is too large")
+	assert.Panics(func() { strip.Set(make([]color.RGBW, 1)) }, "Strip accepted value for set that is too small")
 }

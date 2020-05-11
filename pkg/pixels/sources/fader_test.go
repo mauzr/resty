@@ -20,13 +20,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 	"go.eqrx.net/mauzr/pkg/pixels/sources"
+	"go.eqrx.net/mauzr/pkg/testing/assert"
 )
 
 // TestFadingUp: If fading upwards works.
 func TestFadingUp(t *testing.T) { //nolint
+	assert := assert.New(t)
 	fader := sources.NewFader(1 * time.Second)
 	start, end := make([]color.RGBW, 3), make([]color.RGBW, 3)
 	for i := range start {
@@ -34,16 +35,17 @@ func TestFadingUp(t *testing.T) { //nolint
 		end[i] = color.Bright
 	}
 	fader.Setup(start, end, 5)
-	assert.Equal(t, []color.RGBW{color.Off, color.Off, color.Off}, fader.Pop())
-	assert.Equal(t, []color.RGBW{{White: 0.25}, {White: 0.25}, {White: 0.25}}, fader.Pop())
-	assert.Equal(t, []color.RGBW{{White: 0.5}, {White: 0.5}, {White: 0.5}}, fader.Pop())
-	assert.Equal(t, []color.RGBW{{White: 0.75}, {White: 0.75}, {White: 0.75}}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Bright, color.Bright, color.Bright}, fader.Pop())
-	assert.False(t, fader.HasNext())
+	assert.Equal([]color.RGBW{color.Off, color.Off, color.Off}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{{White: 0.25}, {White: 0.25}, {White: 0.25}}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{{White: 0.5}, {White: 0.5}, {White: 0.5}}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{{White: 0.75}, {White: 0.75}, {White: 0.75}}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{color.Bright, color.Bright, color.Bright}, fader.Pop(), "unexpected color array")
+	assert.False(fader.HasNext(), "unexpected color array")
 }
 
 // TestFadingUp: If fading downwards works.
 func TestFadingDown(t *testing.T) { //nolint
+	assert := assert.New(t)
 	fader := sources.NewFader(1 * time.Second)
 	start, end := make([]color.RGBW, 3), make([]color.RGBW, 3)
 	for i := range start {
@@ -51,10 +53,10 @@ func TestFadingDown(t *testing.T) { //nolint
 		end[i] = color.Off
 	}
 	fader.Setup(start, end, 5)
-	assert.Equal(t, []color.RGBW{color.Bright, color.Bright, color.Bright}, fader.Pop())
-	assert.Equal(t, []color.RGBW{{White: 0.75}, {White: 0.75}, {White: 0.75}}, fader.Pop())
-	assert.Equal(t, []color.RGBW{{White: 0.5}, {White: 0.5}, {White: 0.5}}, fader.Pop())
-	assert.Equal(t, []color.RGBW{{White: 0.25}, {White: 0.25}, {White: 0.25}}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Off, color.Off, color.Off}, fader.Pop())
-	assert.False(t, fader.HasNext())
+	assert.Equal([]color.RGBW{color.Bright, color.Bright, color.Bright}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{{White: 0.75}, {White: 0.75}, {White: 0.75}}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{{White: 0.5}, {White: 0.5}, {White: 0.5}}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{{White: 0.25}, {White: 0.25}, {White: 0.25}}, fader.Pop(), "unexpected color array")
+	assert.Equal([]color.RGBW{color.Off, color.Off, color.Off}, fader.Pop(), "unexpected color array")
+	assert.False(fader.HasNext(), "unexpected color array")
 }

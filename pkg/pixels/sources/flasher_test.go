@@ -20,23 +20,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 	"go.eqrx.net/mauzr/pkg/pixels/sources"
+	"go.eqrx.net/mauzr/pkg/testing/assert"
 )
 
 // TestFlasher: If the flasher actually flashes.
 func TestFlasher(t *testing.T) {
+	assert := assert.New(t)
 	fader := sources.NewFlasher(color.Off, color.Bright, 1*time.Second)
 	fader.Setup(1, 4)
-	assert.Equal(t, []color.RGBW{color.Bright}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Bright}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Bright}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Off}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Bright}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Bright}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Bright}, fader.Pop())
-	assert.Equal(t, []color.RGBW{color.Off}, fader.Pop())
+	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
+	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
+	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
+	assert.Equal([]color.RGBW{color.Off}, fader.Pop(), "expected other value")
+	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
+	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
+	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
+	assert.Equal([]color.RGBW{color.Off}, fader.Pop(), "expected other value")
 }
 
 func BenchmarkFlasher(b *testing.B) {

@@ -17,13 +17,16 @@ limitations under the License.
 package tradfri
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
-	"github.com/bocajim/dtls"
-	coap "github.com/dustin/go-coap"
+	coap "github.com/go-ocf/go-coap"
+	"github.com/go-ocf/go-coap/codes"
 	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
@@ -45,22 +48,7 @@ const (
 `
 )
 
-func send(request interface{}, group string, peer *dtls.Peer) error {
-	rawChange, err := json.Marshal(request)
-	if err != nil {
-		panic(err)
-	}
-	req := coap.Message{Type: coap.NonConfirmable, Code: coap.PUT, Payload: rawChange, MessageID: 1}
-	req.SetPath([]string{"15004", group})
-	rawRequest, err := req.MarshalBinary()
-	if err != nil {
-		panic(err)
-	}
-
-	return peer.Write(rawRequest)
-}
-
-func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
+func handleLamp(c rest.REST, name, group string, connection *coap.ClientConn) {
 	mutex := sync.Mutex{}
 	lastPower := false
 	c.Endpoint(fmt.Sprintf("/%s/status", name), func(query *rest.Request) {
@@ -100,9 +88,21 @@ func handleLamp(c rest.REST, name, group string, peer *dtls.Peer) {
 			request["5851"] = int(*args.Level)
 		}
 
-		if err := send(request, group, peer); err != nil {
+		ctx, cancel := context.WithTimeout(query.Ctx, 15*time.Second)
+		rawChange, err := json.Marshal(request)
+		if err != nil {
+			panic(err)
+		}
+		buf := bytes.NewBuffer(rawChange)
+		message, err := connection.PutWithContext(ctx, fmt.Sprintf("/15004/%v", group), coap.TextPlain, buf)
+		cancel()
+
+		switch {
+		case err != nil:
 			query.GatewayError = err
-		} else {
+		case message.Code() != codes.Changed:
+			query.GatewayError = &CoAPError{StatusCode: message.Code()}
+		default:
 			mutex.Lock()
 			lastPower = args.Power
 			mutex.Unlock()

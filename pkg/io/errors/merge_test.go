@@ -22,44 +22,48 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"go.eqrx.net/mauzr/pkg/io/errors"
+	"go.eqrx.net/mauzr/pkg/testing/assert"
 )
 
 func expectNothing(t *testing.T, timer *time.Timer, c <-chan error) {
 	select {
 	case <-timer.C:
 	case <-c:
-		assert.FailNow(t, "expected no err")
+		t.Errorf("expected no err")
+		t.FailNow()
 	}
 }
 
 func TestMerge(t *testing.T) {
+	assert := assert.New(t)
 	wasCalled := false
 	once := sync.Once{}
 	onError := func() { once.Do(func() { wasCalled = true }) }
 	a, b, c := make(chan error), make(chan error), make(chan error)
 	merged := errors.Merge(onError, a, b, c)
 
-	assert.Equal(t, 0, len(merged))
+	assert.Equal(0, len(merged), "unexpected output")
 	select {
 	case <-merged:
-		assert.FailNow(t, "expected no err")
+		t.Errorf("expected no err")
+		t.FailNow()
 	default:
 	}
-	assert.False(t, wasCalled)
+	assert.False(wasCalled, "onError was called to early")
 	err := fmt.Errorf("somerror") // nolint
 	b <- err
 
 	holdTime := 1 * time.Millisecond
 	select {
 	case <-time.NewTimer(holdTime).C:
-		assert.FailNow(t, "expected err")
+		t.Errorf("expected err")
+		t.FailNow()
 	case e, ok := <-merged:
-		assert.True(t, ok)
-		assert.Equal(t, err, e)
+		assert.True(ok, "no error received")
+		assert.Equal(err, e, "expected other error")
 	}
-	assert.True(t, wasCalled)
+	assert.True(wasCalled, "onError was not called")
 	expectNothing(t, time.NewTimer(holdTime), merged)
 
 	close(c)
@@ -70,10 +74,11 @@ func TestMerge(t *testing.T) {
 
 	select {
 	case <-time.NewTimer(holdTime).C:
-		assert.FailNow(t, "expected err")
+		t.Errorf("expected err")
+		t.FailNow()
 	case e, ok := <-merged:
-		assert.True(t, ok)
-		assert.Equal(t, err, e)
+		assert.True(ok, "expected valid error")
+		assert.Equal(err, e, "expected other error")
 	}
 
 	close(a)
@@ -84,8 +89,9 @@ func TestMerge(t *testing.T) {
 
 	select {
 	case <-time.NewTimer(holdTime).C:
-		assert.FailNow(t, "expected err")
+		t.Errorf("expected err")
+		t.FailNow()
 	case _, ok := <-merged:
-		assert.False(t, ok)
+		assert.False(ok, "expected no error")
 	}
 }

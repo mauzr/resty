@@ -14,12 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package rest contains helpers for testing with the rest provider
 package rest
 
 import (
 	"context"
 	"io"
 	"net/http"
+
+	"go.eqrx.net/mauzr/pkg/io/rest"
 )
 
 // BodyDummy mimics the http body.
@@ -48,7 +51,7 @@ func (d dummy) AddDefaultResponseHeader(http.Header) {}
 func (d dummy) Serve() []<-chan error { return nil }
 
 // Endpoint provides a server end point for a rest application. The given handler is called on each invoction.
-func (d dummy) Endpoint(path string, queryHandler func(query *Request)) {}
+func (d dummy) Endpoint(path string, queryHandler func(query *rest.Request)) {}
 
 // GetJSON from a remote site. It gets serialized into the given interface.
 func (d dummy) GetJSON(context.Context, string, interface{}) error { return nil }
@@ -74,7 +77,7 @@ func (d dummy) Mux() *http.ServeMux { return nil }
 func (d dummy) Client() *http.Client { return nil }
 
 // NewDummy creates a new dummy REST interface.
-func NewDummy() (REST, func()) {
+func NewDummy() (rest.REST, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &dummy{ctx}, cancel
 }
