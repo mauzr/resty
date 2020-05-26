@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package bme manages BME280 and BME680 chips from Bosch.
 package bme
 
 import (
@@ -50,7 +51,7 @@ type Request struct {
 	MaxAge time.Time
 }
 
-func new(chip Chip, offsets Measurement, requests <-chan Request) {
+func new(chip Chip, offsets Measurement, tags map[string]string, requests <-chan Request) {
 	go func() {
 		isReady := false
 		var lastMeasurement *Measurement
@@ -84,6 +85,7 @@ func new(chip Chip, offsets Measurement, requests <-chan Request) {
 				measurement.Humidity += offsets.Humidity
 				measurement.GasResistance += offsets.GasResistance
 				measurement.Pressure += offsets.Pressure
+				measurement.Tags = tags
 				lastMeasurement = &measurement
 				request.Response <- Response{measurement, nil}
 			} else {
@@ -96,11 +98,11 @@ func new(chip Chip, offsets Measurement, requests <-chan Request) {
 }
 
 // NewBME280 creates a new manager for a BME280 chip. Offset will be added to created measurements.
-func NewBME280(bus string, address uint16, offsets Measurement, requests <-chan Request) {
-	new(bme280.New(bus, address), offsets, requests)
+func NewBME280(bus string, address uint16, offsets Measurement, tags map[string]string, requests <-chan Request) {
+	new(bme280.New(bus, address), offsets, tags, requests)
 }
 
 // NewBME680 creates a new manager for a BME280 chip. Offset will be added to created measurements.
-func NewBME680(bus string, address uint16, offsets Measurement, requests <-chan Request) {
-	new(bme680.New(bus, address), offsets, requests)
+func NewBME680(bus string, address uint16, offsets Measurement, tags map[string]string, requests <-chan Request) {
+	new(bme680.New(bus, address), offsets, tags, requests)
 }

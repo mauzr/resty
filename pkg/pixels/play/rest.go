@@ -18,13 +18,17 @@ package play
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"sync"
 	"time"
 
-	"go.eqrx.net/mauzr/pkg/io/rest"
+	"go.eqrx.net/mauzr/pkg/log"
+	"go.eqrx.net/mauzr/pkg/rest"
 )
 
 const (
-	// PartChangeForm ist the HTML5 form preseted to the user when chaning parts.
+	// PartChangeForm ist the HTML5 form presented to the user when chaning parts.
 	PartChangeForm = `
 <!DOCTYPE html>
 <html>
@@ -47,15 +51,17 @@ const (
 `
 )
 
-// AddPartChangerEndpoint that will listen for part change requests.
-func AddPartChangerEndpoint(c rest.REST, path string, status <-chan string, changers ...chan<- Request) {
-	if status != nil {
-		c.Endpoint(path+"/status", func(query *rest.Request) {
-			s := <-status
-			query.ResponseBody = []byte(s)
-		})
-	}
-	c.Endpoint(path, func(query *rest.Request) {
+// ExposeSend will listen for part change requests and gives out the current status.
+func ExposeSend(m rest.Mux, c rest.Client, path string, receivers []string, changers ...chan<- Request) {
+	current := "default"
+	mutex := sync.Mutex{}
+
+	m.Endpoint(path+"/status", func(query *rest.Request) {
+		mutex.Lock()
+		query.ResponseBody, query.InternalErr = json.Marshal(&current)
+		mutex.Unlock()
+	})
+	m.Endpoint(path, func(query *rest.Request) {
 		if !query.HasArgs {
 			query.ResponseBody = []byte(PartChangeForm)
 			return
@@ -66,30 +72,44 @@ func AddPartChangerEndpoint(c rest.REST, path string, status <-chan string, chan
 		if err := query.Args(&args); err != nil {
 			return
 		}
-		ctx, cancel := context.WithTimeout(query.Ctx, 3*time.Second)
-		defer cancel()
-		for _, changer := range changers {
-			response := make(chan error, 1)
-			req := Request{response, args.Stance}
-			select {
-			case <-ctx.Done():
-				query.InternalError = ctx.Err()
-				return
-			case changer <- req:
+		stance := args.Stance
+		mutex.Lock()
+		updateAll(query, stance, changers)
+		current = stance
+
+		reqs := []rest.ClientRequest{}
+		for _, receiver := range receivers {
+			reqs = append(reqs, c.Request(context.Background(), receiver, http.MethodPut).JSONBody(&current))
+		}
+		rest.GoSendAll(http.StatusOK, log.Root.Warning, reqs...)
+		mutex.Unlock()
+	})
+}
+
+func updateAll(query *rest.Request, stance string, changers []chan<- Request) {
+	ctx, cancel := context.WithTimeout(query.Ctx, 3*time.Second)
+	defer cancel()
+	for _, changer := range changers {
+		response := make(chan error, 1)
+		req := Request{response, stance}
+		select {
+		case <-ctx.Done():
+			query.InternalErr = ctx.Err()
+			return
+		case changer <- req:
+		}
+		select {
+		case <-ctx.Done():
+			query.InternalErr = ctx.Err()
+			return
+		case err, ok := <-response:
+			if !ok {
+				panic("closed response channel")
 			}
-			select {
-			case <-ctx.Done():
-				query.InternalError = ctx.Err()
+			if err != nil {
+				query.RequestErr = err
 				return
-			case err, ok := <-response:
-				if !ok {
-					panic("closed response channel")
-				}
-				if err != nil {
-					query.RequestError = err
-					return
-				}
 			}
 		}
-	})
+	}
 }

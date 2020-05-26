@@ -93,7 +93,6 @@ func (c Configuration) arguments() ([]string, error) {
 }
 
 func startCmd(args []string) (cmd *exec.Cmd, stdout, stderr io.Reader, err error) {
-	fmt.Printf("configuring raspivid with %v\n", args)
 	cmd = exec.Command("raspivid", args...)
 	stdout, err = cmd.StdoutPipe()
 	if err != nil {

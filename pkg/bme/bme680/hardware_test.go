@@ -23,8 +23,7 @@ import (
 
 	"go.eqrx.net/mauzr/pkg/bme/bme680"
 	"go.eqrx.net/mauzr/pkg/bme/common"
-	"go.eqrx.net/mauzr/pkg/io"
-	"go.eqrx.net/mauzr/pkg/io/i2c"
+	"go.eqrx.net/mauzr/pkg/i2c"
 )
 
 //MeasurementMock fakes an BME680 device behind an I2C bus.
@@ -61,12 +60,12 @@ var (
 	measurementResult = common.Measurement{GasResistance: 2898707, Humidity: 63, Pressure: 101304.8, Temperature: 25.4}
 )
 
-func (m MeasurementMock) Write(data ...byte) io.Action { return io.NoOperation }
-func (m MeasurementMock) Open() io.Action              { return io.NoOperation }
-func (m MeasurementMock) Close() io.Action             { return io.NoOperation }
+func (m MeasurementMock) Write(data ...byte) func() error { return func() error { return nil } }
+func (m MeasurementMock) Open() error                     { return nil }
+func (m MeasurementMock) Close() error                    { return nil }
 
 // WriteRead returns data from the given array.
-func (m MeasurementMock) WriteRead(source []byte, destination []byte) io.Action {
+func (m MeasurementMock) WriteRead(source []byte, destination []byte) func() error {
 	return func() error {
 		if len(source) != 1 {
 			panic(fmt.Sprintf("Expected i2c.RegisterAddress to have length 1, was %v", len(source)))

@@ -29,7 +29,7 @@ import (
 
 	"unsafe"
 
-	"go.eqrx.net/mauzr/pkg/io/file"
+	"go.eqrx.net/mauzr/pkg/file"
 )
 
 type operation struct {
@@ -122,7 +122,7 @@ func New(input strip.Input, path string, framerate int) <-chan error {
 			return
 		}
 		defer func() {
-			if err := f.Close()(); err != nil {
+			if err := f.Close(); err != nil {
 				errors <- err
 			}
 		}()
@@ -146,7 +146,7 @@ func New(input strip.Input, path string, framerate int) <-chan error {
 				len:     uint32(len(translated)),
 				speedHz: speed,
 			}
-			err := f.Ioctl(ioctl, uintptr(unsafe.Pointer(&arg)))()
+			err := f.IoctlPointerArgument(ioctl, unsafe.Pointer(&arg))()
 			if err != nil {
 				errors <- err
 				return

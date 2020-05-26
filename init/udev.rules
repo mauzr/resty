@@ -1,4 +1,0 @@
-KERNEL=="i2c-1*", GROUP="mauzr" MODE="0660"
-KERNEL=="ttyUSB*", GROUP="mauzr" MODE="0660"
-KERNEL=="spidev*", GROUP="mauzr" MODE="0660"
-KERNEL=="gpiochip*", GROUP="mauzr" MODE="0660"

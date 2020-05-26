@@ -14,20 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package color contains color types.
-package color
+package rest
 
-var (
-	// Off turns the pixel off.
-	Off = RGBW{}
-	// Bright sets the pixel to as bright as possible.
-	Bright = RGBW{White: 1.0}
-	// Unmanaged indicates that the pixel is not actively managed.
-	Unmanaged = RGBW{Red: 1.0}
-	// Error indicates that something is wrong.
-	Error = Off.MixWith(0.1, RGBW{Red: 1.0})
-	// Warning indicates that something requires attention.
-	Warning = Off.MixWith(0.1, RGBW{Red: 1.0, Green: 1.0})
-	// Good indicated that everything is fine.
-	Good = Off.MixWith(0.1, RGBW{Green: 1.0})
+import (
+	"fmt"
 )
+
+// HTTPError represents an HTTP error in combination with an HTTP status code.
+type HTTPError struct {
+	URL        string
+	StatusCode int
+	Text       string
+}
+
+// Error returns the error as string.
+func (h HTTPError) Error() string {
+	return fmt.Sprintf("%v -> %v %v", h.URL, h.StatusCode, h.Text)
+}

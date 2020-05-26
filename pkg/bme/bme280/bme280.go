@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/bme/common"
-	"go.eqrx.net/mauzr/pkg/io"
-	"go.eqrx.net/mauzr/pkg/io/i2c"
+	"go.eqrx.net/mauzr/pkg/errors"
+	"go.eqrx.net/mauzr/pkg/i2c"
 )
 
 // calibrationInput contains variables that will be read out of the BME280 registers.
@@ -72,14 +72,13 @@ func (m *Model) Calibrations() Calibrations {
 func (m *Model) Reset() error {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf on how this works
 	var data [36]byte
-	actions := []io.Action{
-		m.device.Open(),
+	err := errors.NewBatch(m.device.Open,
 		m.device.Write(0xe0, 0xb6),
-		io.Sleep(2 * time.Millisecond),
+		errors.BatchSleepAction(2*time.Millisecond),
 		m.device.WriteRead([]byte{0x88}, data[0:26]),
 		m.device.WriteRead([]byte{0xe1}, data[26:35]),
-	}
-	if err := io.Execute("resetting bme280", actions, []io.Action{m.device.Close()}); err != nil {
+	).Always(m.device.Close).Execute("resetting bme280")
+	if err != nil {
 		return err
 	}
 
@@ -98,14 +97,14 @@ func (m *Model) Reset() error {
 // Measure creates a measurement with the given BME280 behind the given address.
 func (m *Model) Measure() (common.Measurement, error) {
 	var reading [8]byte
-	actions := []io.Action{
-		m.device.Open(),
+	err := errors.NewBatch(m.device.Open,
 		m.device.Write(0xf4, 0x3f),
 		m.device.Write(0xf2, 0x01),
 		m.device.Write(0xf4, 0x25),
 		m.device.WriteRead([]byte{0xf7}, reading[:]),
-	}
-	if err := io.Execute("reading measurement from bme280", actions, []io.Action{m.device.Close()}); err != nil {
+	).Always(m.device.Close).Execute("measuring with bme280")
+
+	if err != nil {
 		return common.Measurement{}, err
 	}
 

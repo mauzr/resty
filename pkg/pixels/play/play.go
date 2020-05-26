@@ -76,7 +76,7 @@ func shutdown(colors []color.RGBW, output strip.Output, framerate int) {
 }
 
 // New creates a new play manager.
-func New(parts map[string]sources.Loop, output strip.Output, framerate int, requests <-chan Request) <-chan string {
+func New(parts map[string]sources.Loop, output strip.Output, framerate int, requests <-chan Request) {
 	if framerate < 0 {
 		panic("framerate must be > 0")
 	}
@@ -85,18 +85,15 @@ func New(parts map[string]sources.Loop, output strip.Output, framerate int, requ
 		colors[i] = color.Unmanaged
 	}
 
-	current := make(chan string)
 	setupParts(parts, output, framerate)
 	go func() {
 		currentPart := "default"
 		var transition sources.Transition
 		defer output.Close()
 		defer shutdown(colors, output, framerate)
-		defer close(current)
 
 		for {
 			select {
-			case current <- currentPart:
 			case request, ok := <-requests:
 				switch {
 				case !ok:
@@ -129,5 +126,4 @@ func New(parts map[string]sources.Loop, output strip.Output, framerate int, requ
 			}
 		}
 	}()
-	return current
 }

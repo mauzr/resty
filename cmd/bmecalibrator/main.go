@@ -26,8 +26,8 @@ import (
 func main() {
 	dut := make(chan bme.Request)
 	com := make(chan bme.Request)
-	bme.NewBME680("/dev/i2c-1", 0x76, bme.Measurement{}, dut)
-	bme.NewBME680("/dev/i2c-1", 0x77, bme.Measurement{}, com)
+	bme.NewBME680("/dev/i2c-1", 0x76, bme.Measurement{}, map[string]string{}, dut)
+	bme.NewBME680("/dev/i2c-1", 0x77, bme.Measurement{}, map[string]string{}, com)
 	ticker := time.NewTicker(30 * time.Second)
 	for {
 		dutResponses := make(chan bme.Response, 1)

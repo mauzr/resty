@@ -22,12 +22,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"sync"
 	"time"
 
 	coap "github.com/go-ocf/go-coap"
 	"github.com/go-ocf/go-coap/codes"
-	"go.eqrx.net/mauzr/pkg/io/rest"
+	"go.eqrx.net/mauzr/pkg/log"
+	"go.eqrx.net/mauzr/pkg/rest"
 )
 
 const (
@@ -48,45 +50,36 @@ const (
 `
 )
 
-func handleLamp(c rest.REST, name, group string, connection *coap.ClientConn) {
+// LampSetting describe the state of a lamp.
+type LampSetting struct {
+	Power bool    `json:"power,string"`
+	Level float64 `json:"level,string"`
+}
+
+// HandleLamp handles a tradfri lamp.
+func HandleLamp(c rest.Client, m rest.Mux, name, group string, connection *coap.ClientConn, notifies ...string) {
 	mutex := sync.Mutex{}
-	lastPower := false
-	c.Endpoint(fmt.Sprintf("/%s/status", name), func(query *rest.Request) {
+	lastSetting := LampSetting{}
+	m.Endpoint(fmt.Sprintf("/%s/status", name), func(query *rest.Request) {
 		mutex.Lock()
-		query.ResponseBody = []byte("off")
-		if lastPower {
-			query.ResponseBody = []byte("on")
-		}
+		query.ResponseBody, query.InternalErr = json.Marshal(&lastSetting)
 		mutex.Unlock()
 	})
-	c.Endpoint(fmt.Sprintf("/%s", name), func(query *rest.Request) {
+	m.Endpoint(fmt.Sprintf("/%s", name), func(query *rest.Request) {
 		if !query.HasArgs {
 			query.ResponseBody = []byte(form)
 			return
 		}
-		args := struct {
-			Power bool     `json:"power,string"`
-			Level *float64 `json:"level,string"`
-		}{}
+		args := LampSetting{}
 		if err := query.Args(&args); err != nil {
 			return
 		}
-		if args.Level != nil {
-			*args.Level = math.Max(0.0, math.Min(*args.Level, 1.0)) * 254.0
-		}
 
-		request := map[string]int{}
+		request := map[string]int{"5850": 0}
 		if args.Power {
 			request["5850"] = 1
-		} else {
-			request["5850"] = 0
 		}
-
-		switch {
-		case args.Level == nil:
-		default:
-			request["5851"] = int(*args.Level)
-		}
+		request["5851"] = int(math.Max(0.0, math.Min(args.Level, 1.0)) * 254.0)
 
 		ctx, cancel := context.WithTimeout(query.Ctx, 15*time.Second)
 		rawChange, err := json.Marshal(request)
@@ -99,12 +92,18 @@ func handleLamp(c rest.REST, name, group string, connection *coap.ClientConn) {
 
 		switch {
 		case err != nil:
-			query.GatewayError = err
+			query.GatewayErr = err
 		case message.Code() != codes.Changed:
-			query.GatewayError = &CoAPError{StatusCode: message.Code()}
+			query.GatewayErr = &CoAPError{StatusCode: message.Code()}
 		default:
+			notifyRequests := []rest.ClientRequest{}
+			for _, notify := range notifies {
+				notifyRequests = append(notifyRequests, c.Request(context.Background(), notify, http.MethodPut).JSONBody(&args))
+			}
+			rest.GoSendAll(http.StatusOK, log.Root.Warning, notifyRequests...)
+
 			mutex.Lock()
-			lastPower = args.Power
+			lastSetting = args
 			mutex.Unlock()
 		}
 	})

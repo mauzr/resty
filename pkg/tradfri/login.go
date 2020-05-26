@@ -32,21 +32,31 @@ import (
 
 const identityLetters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-func connect(address, key string) (*coap.ClientConn, error) {
+// Connect to the tradfri gateway.
+func Connect(address, master, identity, key string) (*coap.ClientConn, string, string, error) {
+	mainConfig := dtls.Config{
+		PSK:             func(hint []byte) ([]byte, error) { return []byte(key), nil },
+		PSKIdentityHint: []byte(identity),
+		CipherSuites:    []dtls.CipherSuiteID{dtls.TLS_PSK_WITH_AES_128_CCM_8},
+	}
+	sessionConnection, err := coap.DialDTLSWithTimeout("udp-dtls", net.JoinHostPort(address, "5684"), &mainConfig, 15*time.Second)
+	if err == nil {
+		return sessionConnection, identity, key, nil
+	}
+
 	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	identity := ""
+	identity = ""
 	for i := 0; i < 8; i++ {
 		identity += string(identityLetters[rand.Intn(len(identityLetters))])
 	}
-	fmt.Println(identity)
 	loginConfig := dtls.Config{
-		PSK:             func(hint []byte) ([]byte, error) { return []byte(key), nil },
+		PSK:             func(hint []byte) ([]byte, error) { return []byte(master), nil },
 		PSKIdentityHint: []byte("Client_identity"),
 		CipherSuites:    []dtls.CipherSuiteID{dtls.TLS_PSK_WITH_AES_128_CCM_8},
 	}
 	loginConnection, err := coap.DialDTLSWithTimeout("udp-dtls", net.JoinHostPort(address, "5684"), &loginConfig, 15*time.Second)
 	if err != nil {
-		return nil, err
+		return nil, "", "", err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -55,20 +65,18 @@ func connect(address, key string) (*coap.ClientConn, error) {
 
 	loginMessage.Code()
 	if err != nil {
-		return nil, err
+		return nil, "", "", err
 	}
 
 	if loginMessage.Code() != codes.Created {
-		return nil, &CoAPError{StatusCode: loginMessage.Code()}
+		return nil, "", "", &CoAPError{StatusCode: loginMessage.Code()}
 	}
 	_ = loginConnection.Close()
 
-	psk := strings.Split(string(loginMessage.Payload()), "\"")[3]
-	fmt.Println(psk)
-	mainConfig := dtls.Config{
-		PSK:             func(hint []byte) ([]byte, error) { return []byte(psk), nil },
-		PSKIdentityHint: []byte(identity),
-		CipherSuites:    []dtls.CipherSuiteID{dtls.TLS_PSK_WITH_AES_128_CCM_8},
-	}
-	return coap.DialDTLSWithTimeout("udp-dtls", net.JoinHostPort(address, "5684"), &mainConfig, 15*time.Second)
+	key = strings.Split(string(loginMessage.Payload()), "\"")[3]
+	mainConfig.PSKIdentityHint = []byte(identity)
+	mainConfig.PSK = func(hint []byte) ([]byte, error) { return []byte(key), nil }
+
+	sessionConnection, err = coap.DialDTLSWithTimeout("udp-dtls", net.JoinHostPort(address, "5684"), &mainConfig, 15*time.Second)
+	return sessionConnection, identity, key, err
 }

@@ -5,8 +5,6 @@ go 1.14
 require (
 	github.com/go-ocf/go-coap v0.0.0-20200511140640-db6048acfdd3
 	github.com/pion/dtls/v2 v2.0.0
-	github.com/spf13/cobra v1.0.0
-	github.com/spf13/pflag v1.0.5
-	golang.org/x/sys v0.0.0-20200509044756-6aff5f38e54f
-	gopkg.in/yaml.v2 v2.2.8 // indirect
+	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
+	golang.org/x/sys v0.0.0-20200523222454-059865788121
 )

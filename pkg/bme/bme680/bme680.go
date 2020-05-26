@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"go.eqrx.net/mauzr/pkg/bme/common"
-	"go.eqrx.net/mauzr/pkg/io"
-	"go.eqrx.net/mauzr/pkg/io/i2c"
+	"go.eqrx.net/mauzr/pkg/errors"
+	"go.eqrx.net/mauzr/pkg/i2c"
 )
 
 // calibrationInput contains variables that will be read out of the BME680 registers.
@@ -78,21 +78,19 @@ func (m *Model) Calibrations() Calibrations {
 	return m.calibrations
 }
 
-func (m *Model) setupGas() func() error {
-	return func() error {
-		target := uint8(3.4 * (((((float64(m.calibrations.Gas.G1)/16.0)+49.0)*(1.0+((((float64(m.calibrations.Gas.G2)/32768.0)*0.0005)+0.00235)*300)) + (float64(m.calibrations.Gas.G3) / 1024.0 * m.last.Temperature)) * (4.0 / (4.0 + float64(m.calibrations.Gas.HeatRange))) * (1.0 / (1.0 + (float64(m.calibrations.Gas.HeatValue) * 0.002)))) - 25))
-		return m.device.Write(0x5a, target)()
-	}
+func (m *Model) setupGas() error {
+	target := uint8(3.4 * (((((float64(m.calibrations.Gas.G1)/16.0)+49.0)*(1.0+((((float64(m.calibrations.Gas.G2)/32768.0)*0.0005)+0.00235)*300)) + (float64(m.calibrations.Gas.G3) / 1024.0 * m.last.Temperature)) * (4.0 / (4.0 + float64(m.calibrations.Gas.HeatRange))) * (1.0 / (1.0 + (float64(m.calibrations.Gas.HeatValue) * 0.002)))) - 25))
+	return m.device.Write(0x5a, target)()
 }
 
 // Reset resets the BME680 behind the given address and fetches the calibration.
 func (m *Model) Reset() error {
 	var data [42]byte
 	var extraData [5]byte
-	actions := []io.Action{
-		m.device.Open(),
+	return errors.NewBatch(
+		m.device.Open,
 		m.device.Write(0xe0, 0xb6),
-		io.Sleep(100 * time.Millisecond),
+		errors.BatchSleepAction(100*time.Millisecond),
 		m.device.WriteRead([]byte{0x89}, data[0:25]),
 		m.device.WriteRead([]byte{0xe1}, data[25:41]),
 		m.device.WriteRead([]byte{0x00}, extraData[:]),
@@ -111,21 +109,20 @@ func (m *Model) Reset() error {
 		},
 		m.device.Write(0x72, 0b00000101, 0b10110101),
 		m.device.Write(0x64, 0x59),
-		m.setupGas(),
+		m.setupGas,
 		m.device.Write(0x71, 0b00010000),
 		m.device.Write(0x75, 0b00010000),
-	}
-	return io.Execute("resetting bme680", actions, []io.Action{m.device.Close()})
+	).Always(m.device.Close).Execute("reset bme680")
 }
 
 // Measure creates a measurement with the given BME680 behind the given address.
 func (m *Model) Measure() (common.Measurement, error) {
 	var reading [15]byte
-	actions := []io.Action{
-		m.device.Open(),
-		m.setupGas(),
+	err := errors.NewBatch(
+		m.device.Open,
+		m.setupGas,
 		m.device.Write(0x74, 0b10110101),
-		io.Sleep(500 * time.Millisecond),
+		errors.BatchSleepAction(500*time.Millisecond),
 		m.device.WriteRead([]byte{0x1d}, reading[:]),
 		func() error {
 			if reading[0]&0x80 == 0x00 {
@@ -133,8 +130,8 @@ func (m *Model) Measure() (common.Measurement, error) {
 			}
 			return nil
 		},
-	}
-	if err := io.Execute("reading measurement from bme680", actions, []io.Action{m.device.Close()}); err != nil {
+	).Always(m.device.Close).Execute("measuring with bme680")
+	if err != nil {
 		return common.Measurement{}, err
 	}
 

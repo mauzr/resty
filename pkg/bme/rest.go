@@ -19,15 +19,55 @@ package bme
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"net/http"
 	"time"
 
-	"go.eqrx.net/mauzr/pkg/io/rest"
+	"go.eqrx.net/mauzr/pkg/log"
+	"go.eqrx.net/mauzr/pkg/rest"
 )
 
-// setupHandler creates a http handler that handles measurements with the given manager.
-func setupHandler(c rest.REST, requests chan<- Request, tags map[string]string) {
-	c.Endpoint("/measurement", func(query *rest.Request) {
+// Send a measurement to remote sites.
+func Send(ctx context.Context, c rest.Client, requests chan<- Request, interval time.Duration, destinations ...string) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+
+			resps := make(chan Response, 1)
+			select {
+			case <-ctx.Done():
+				return
+			case requests <- Request{resps, time.Now().Add(interval)}:
+			}
+
+			var resp Response
+			select {
+			case <-ctx.Done():
+				return
+			case resp = <-resps:
+			}
+
+			if resp.Err != nil {
+				log.Root.Warning("could not fetch measurement: %v", resp.Err)
+			}
+
+			reqs := make([]rest.ClientRequest, len(destinations))
+			for i, d := range destinations {
+				reqs[i] = c.Request(context.Background(), d, http.MethodPut).JSONBody(&resp.Measurement)
+			}
+			rest.GoSendAll(http.StatusOK, log.Root.Warning, reqs...)
+		}
+	}()
+}
+
+// Expose creates a http handler that handles measurements with the given manager.
+func Expose(mux rest.Mux, path string, requests chan<- Request) {
+	mux.Endpoint(path, func(query *rest.Request) {
 		args := struct {
 			MaxAge string `json:"maxAge"`
 		}{}
@@ -36,7 +76,7 @@ func setupHandler(c rest.REST, requests chan<- Request, tags map[string]string) 
 		}
 		maxAge, err := time.ParseDuration(args.MaxAge)
 		if err != nil {
-			query.RequestError = err
+			query.RequestErr = err
 			return
 		}
 
@@ -48,24 +88,21 @@ func setupHandler(c rest.REST, requests chan<- Request, tags map[string]string) 
 
 		select {
 		case <-measureCtx.Done():
-			query.InternalError = measureCtx.Err()
+			query.InternalErr = measureCtx.Err()
 			return
 		case requests <- request:
 		}
 		select {
 		case <-measureCtx.Done():
-			fmt.Println("timeout")
-			query.InternalError = measureCtx.Err()
+			query.InternalErr = measureCtx.Err()
 		case response, ok := <-responses:
 			switch {
 			case !ok:
 				panic("unknown internal error")
 			case response.Err != nil:
-				fmt.Println(response.Err)
-				query.InternalError = response.Err
+				query.InternalErr = response.Err
 			default:
-				response.Measurement.Tags = tags
-				query.ResponseBody, query.InternalError = json.Marshal(response.Measurement)
+				query.ResponseBody, query.InternalErr = json.Marshal(response.Measurement)
 			}
 		}
 	})
