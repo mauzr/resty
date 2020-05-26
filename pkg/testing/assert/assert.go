@@ -28,6 +28,8 @@ type Assert interface {
 	True(actual bool, err string)
 	False(actual bool, err string)
 	Panics(actual func(), err string)
+	Errorf(format string, args ...interface{})
+	FailNow()
 }
 
 type assert struct {
@@ -59,6 +61,14 @@ func (a assert) Panics(actual func(), err string) {
 		}
 	}()
 	actual()
+}
+
+func (a assert) Errorf(format string, args ...interface{}) {
+	a.t.Errorf(format, args...)
+}
+
+func (a assert) FailNow() {
+	a.t.FailNow()
 }
 
 // New creates a new Assert instance.

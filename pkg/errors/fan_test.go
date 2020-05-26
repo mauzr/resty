@@ -25,12 +25,23 @@ import (
 	"go.eqrx.net/mauzr/pkg/testing/assert"
 )
 
-func expectNothing(t *testing.T, timer *time.Timer, c <-chan error) {
+func expectNothing(assert assert.Assert, timer *time.Timer, c <-chan error) {
 	select {
 	case <-timer.C:
 	case <-c:
-		t.Errorf("expected no err")
-		t.FailNow()
+		assert.Errorf("expected no err")
+		assert.FailNow()
+	}
+}
+
+func expectErrChannelClosed(assert assert.Assert, timer *time.Timer, c <-chan error) {
+	select {
+	case <-timer.C:
+		assert.Errorf("expected err")
+		assert.FailNow()
+	case e, ok := <-c:
+		assert.True(ok, "no error received")
+		assert.True(errors.Is(e, errors.ErrChannelClosed), "expected errors.ErrChannelClosed")
 	}
 }
 
@@ -58,11 +69,11 @@ func TestMerge(t *testing.T) {
 		assert.True(ok, "no error received")
 		assert.Equal(err, e, "expected other error")
 	}
-	expectNothing(t, time.NewTimer(holdTime), merged)
+	expectNothing(assert, time.NewTimer(holdTime), merged)
 
 	close(c)
 
-	expectNothing(t, time.NewTimer(holdTime), merged)
+	expectErrChannelClosed(assert, time.NewTimer(holdTime), merged)
 
 	a <- err
 
@@ -77,9 +88,11 @@ func TestMerge(t *testing.T) {
 
 	close(a)
 
-	expectNothing(t, time.NewTimer(holdTime), merged)
+	expectErrChannelClosed(assert, time.NewTimer(holdTime), merged)
 
 	close(b)
+
+	expectErrChannelClosed(assert, time.NewTimer(holdTime), merged)
 
 	select {
 	case <-time.NewTimer(holdTime).C:

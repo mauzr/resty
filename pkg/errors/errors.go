@@ -23,7 +23,8 @@ import (
 	"strings"
 )
 
-var errChannelClosed = New("error channel closed")
+// ErrChannelClosed indicates an input error channel for a fan in was closed.
+var ErrChannelClosed = New("error channel closed")
 
 // MultiError contains multiple errors (that may occurred independen from each other).
 type MultiError struct {

@@ -23,4 +23,4 @@ jobs:
     - name: Benchmark
       run: make benchmark
     - name: Build
-      run: make dist
+      run: make build

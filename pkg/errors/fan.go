@@ -38,7 +38,7 @@ func FanInto(merged chan<- error, errors ...<-chan error) {
 				if ok {
 					merged <- err
 				} else {
-					merged <- errChannelClosed
+					merged <- ErrChannelClosed
 					wg.Done()
 					return
 				}

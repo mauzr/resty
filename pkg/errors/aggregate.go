@@ -36,7 +36,7 @@ func Aggregate(source <-chan error, additional ...error) error {
 			if err == nil {
 				panic("received null as err")
 			}
-			if !Is(errChannelClosed, err) {
+			if !Is(ErrChannelClosed, err) {
 				errors = append(errors, err)
 			}
 		}
