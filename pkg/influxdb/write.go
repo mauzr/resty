@@ -71,11 +71,11 @@ func New(destination, token string, tls *tls.Config) *Client {
 
 // Write an influxdb measurement to the database.
 func (c Client) Write(ctx context.Context, bucket string, measurements ...Measurement) error {
-	url := fmt.Sprintf("%s/api/v2/write?org=eqrx&bucket=%s&precision=ns", c.destination, bucket)
+	url := fmt.Sprintf("%sapi/v2/write?org=eqrx&bucket=%s&precision=ns", c.destination, bucket)
 	lines := make([]string, 0, len(measurements))
 	for _, m := range measurements {
 		lines = append(lines, m.Line())
 	}
 	body := strings.Join(lines, "\n")
-	return c.c.Request(ctx, url, http.MethodPost).Header("Authorization", fmt.Sprintf("Token %s", c.token)).StringBody(body).Send(http.StatusOK).Check()
+	return c.c.Request(ctx, url, http.MethodPost).Header("Authorization", fmt.Sprintf("Token %s", c.token)).StringBody(body).Send(http.StatusNoContent).Check()
 }

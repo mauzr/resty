@@ -146,7 +146,7 @@ func (c *clientRequest) Send(okCode int) ClientResponse {
 		panic(err)
 	}
 	cc := &clientResponse{}
-	cc.Response, cc.RequestErr = c.Client.Do(request) //nolint:bodyclose
+	cc.Response, cc.RequestErr = c.Client.Do(request) //nolint:bodyclose // Will be closed by other chained functions.
 	if cc.RequestErr == nil {
 		if okCode != cc.Response.StatusCode {
 			if cc.Response.StatusCode == http.StatusMovedPermanently || cc.Response.StatusCode == http.StatusTemporaryRedirect || cc.Response.StatusCode == http.StatusSeeOther {
@@ -159,8 +159,6 @@ func (c *clientRequest) Send(okCode int) ClientResponse {
 				cc.RequestErr = HTTPError{URL: request.URL.String(), StatusCode: cc.Response.StatusCode, Text: string(data)}
 			}
 		}
-	} else {
-		cc.RequestErr = HTTPError{URL: request.URL.String(), Text: cc.RequestErr.Error()}
 	}
 	if cc.Response == nil && cc.RequestErr == nil {
 		panic("invalid state")

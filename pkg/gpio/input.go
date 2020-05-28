@@ -147,7 +147,7 @@ func (i *input) Current(target *bool) func() error {
 			return err
 		}
 		*target = values[0] != 0
-		return nil
+		return f.Close()
 	}
 }
 

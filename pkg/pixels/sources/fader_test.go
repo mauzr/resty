@@ -26,37 +26,63 @@ import (
 )
 
 // TestFadingUp: If fading upwards works.
-func TestFadingUp(t *testing.T) { //nolint
+func TestFadingUp(t *testing.T) {
 	assert := assert.New(t)
-	fader := sources.NewFader(1 * time.Second)
-	start, end := make([]color.RGBW, 3), make([]color.RGBW, 3)
-	for i := range start {
-		start[i] = color.Off
-		end[i] = color.Bright
+	tick := make(chan interface{})
+	done := make(chan interface{})
+	v := color.Off()
+	c := sources.TransitionSetting{
+		Tick:        tick,
+		Done:        done,
+		Destination: []*color.RGBW{&v},
+		Desired:     []color.RGBW{color.Bright()},
+		Framerate:   4,
 	}
-	fader.Setup(start, end, 5)
-	assert.Equal([]color.RGBW{color.Off, color.Off, color.Off}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{{White: 0.25}, {White: 0.25}, {White: 0.25}}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{{White: 0.5}, {White: 0.5}, {White: 0.5}}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{{White: 0.75}, {White: 0.75}, {White: 0.75}}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{color.Bright, color.Bright, color.Bright}, fader.Pop(), "unexpected color array")
-	assert.False(fader.HasNext(), "unexpected color array")
+
+	sources.Fader(1 * time.Second)(c)
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.00).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	<-done
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.25).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	<-done
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.50).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	<-done
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.75).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	_, ok := <-done
+	assert.False(ok, "fader did not stop")
+	assert.Equal(color.NewRGBW(0, 0, 0, 1.00).Channels(), v.Channels(), "unexpected color array")
 }
 
-// TestFadingUp: If fading downwards works.
-func TestFadingDown(t *testing.T) { //nolint
+// TestFadingDown: If fading downwards works.
+func TestFadingDown(t *testing.T) {
 	assert := assert.New(t)
-	fader := sources.NewFader(1 * time.Second)
-	start, end := make([]color.RGBW, 3), make([]color.RGBW, 3)
-	for i := range start {
-		start[i] = color.Bright
-		end[i] = color.Off
+	tick := make(chan interface{})
+	done := make(chan interface{})
+	v := color.Bright()
+	c := sources.TransitionSetting{
+		Tick:        tick,
+		Done:        done,
+		Destination: []*color.RGBW{&v},
+		Desired:     []color.RGBW{color.Off()},
+		Framerate:   4,
 	}
-	fader.Setup(start, end, 5)
-	assert.Equal([]color.RGBW{color.Bright, color.Bright, color.Bright}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{{White: 0.75}, {White: 0.75}, {White: 0.75}}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{{White: 0.5}, {White: 0.5}, {White: 0.5}}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{{White: 0.25}, {White: 0.25}, {White: 0.25}}, fader.Pop(), "unexpected color array")
-	assert.Equal([]color.RGBW{color.Off, color.Off, color.Off}, fader.Pop(), "unexpected color array")
-	assert.False(fader.HasNext(), "unexpected color array")
+	sources.Fader(1 * time.Second)(c)
+	assert.Equal(color.NewRGBW(0, 0, 0, 1.00).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	<-done
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.75).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	<-done
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.50).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	<-done
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.25).Channels(), v.Channels(), "unexpected color array")
+	tick <- nil
+	<-done
+	_, ok := <-done
+	assert.False(ok, "fader did not stop")
+	assert.Equal(color.NewRGBW(0, 0, 0, 0.00), v, "unexpected color array")
 }

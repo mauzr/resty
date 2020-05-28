@@ -38,26 +38,27 @@ type assert struct {
 
 func (a assert) Equal(expected, actual interface{}, err string) {
 	if !reflect.DeepEqual(expected, actual) {
-		a.t.Errorf("%s: expected %v, actual %v", err, expected, actual)
+		a.Errorf("%s: expected %v, actual %v", err, expected, actual)
 	}
 }
 
 func (a assert) True(actual bool, err string) {
 	if !actual {
-		a.t.Errorf("%s: not true", err)
+		a.Errorf("%s: not true", err)
 	}
 }
 
 func (a assert) False(actual bool, err string) {
 	if actual {
-		a.t.Errorf("%s: not false", err)
+		a.Errorf("%s: not false", err)
 	}
 }
 
 func (a assert) Panics(actual func(), err string) {
 	defer func() {
 		if r := recover(); r == nil {
-			a.t.Errorf("%s: did not panic", err)
+			a.Errorf("%s: did not panic", err)
+			a.FailNow()
 		}
 	}()
 	actual()

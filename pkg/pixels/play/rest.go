@@ -102,10 +102,7 @@ func updateAll(query *rest.Request, stance string, changers []chan<- Request) {
 		case <-ctx.Done():
 			query.InternalErr = ctx.Err()
 			return
-		case err, ok := <-response:
-			if !ok {
-				panic("closed response channel")
-			}
+		case err := <-response:
 			if err != nil {
 				query.RequestErr = err
 				return

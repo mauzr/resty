@@ -22,58 +22,50 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type stars struct {
-	length           int
-	speed            float64
-	lower, upper     color.RGBW
-	factors, changes []float64
-}
-
-// NewStars returns a Loop that lets the pixels imitate starts.
-func NewStars(theme color.RGBW) Loop {
-	return &stars{0, 0, color.Off.MixWith(0.1, theme), theme, nil, nil}
-}
-
-// Setup the loop for use. May be called only once.
-func (c *stars) Setup(length int, framerate int) {
-	if c.length != 0 {
-		panic("reused source")
+// Stars emulates that each managed pixel is an independent light source that flickers.
+func Stars(theme color.RGBW) func(LoopSetting) {
+	if theme == nil {
+		panic("theme not set")
 	}
-	if length == 0 {
-		panic("zero length")
-	}
-	c.length = length
-	c.factors = make([]float64, length)
-	c.changes = make([]float64, length)
-	c.speed = 0.001 * float64(framerate)
-	for i := range c.factors {
-		c.factors[i] = 1.0
-		c.changes[i] = rand.Float64()*c.speed + 0.01
-	}
-}
-
-// Peer the next generated color (Next invocation will return the same color).
-func (c *stars) Peek() []color.RGBW {
-	new := make([]color.RGBW, c.length)
-	for i := range c.factors {
-		new[i] = c.lower.MixWith(c.factors[i], c.upper)
-	}
-	return new
-}
-
-// Pop the next generated color (Next invocation will return the next color).
-func (c *stars) Pop() []color.RGBW {
-	new := c.Peek()
-	for i := range c.factors {
-		c.factors[i] += c.changes[i]
-		switch {
-		case c.factors[i] >= 1.0:
-			c.factors[i] = 1.0
-			c.changes[i] = -(rand.Float64()*c.speed + 0.01)
-		case c.factors[i] <= 0.0:
-			c.factors[i] = 0.0
-			c.changes[i] = rand.Float64()*c.speed + 0.01
+	lower := color.Off().MixWith(0.1, theme)
+	upper := theme
+	return func(l LoopSetting) {
+		for i := range l.Start {
+			l.Start[i] = upper
 		}
+		go func() {
+			defer close(l.Done)
+			if len(l.Destination) == 0 {
+				panic("zero length destination")
+			}
+			factors := make([]float64, len(l.Destination))
+			changes := make([]float64, len(l.Destination))
+			speed := 0.001 * float64(l.Framerate)
+			for i := range factors {
+				factors[i] = 1.0
+				changes[i] = rand.Float64()*speed + 0.01
+			}
+			for {
+				if _, ok := <-l.Tick; !ok {
+					return
+				}
+				for i := range l.Destination {
+					*l.Destination[i] = lower.MixWith(factors[i], upper)
+				}
+				l.Done <- nil
+
+				for i := range factors {
+					factors[i] += changes[i]
+					switch {
+					case factors[i] >= 1.0:
+						factors[i] = 1.0
+						changes[i] = -(rand.Float64()*speed + 0.01)
+					case factors[i] <= 0.0:
+						factors[i] = 0.0
+						changes[i] = rand.Float64()*speed + 0.01
+					}
+				}
+			}
+		}()
 	}
-	return new
 }

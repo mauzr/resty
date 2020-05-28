@@ -22,41 +22,46 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type turner struct {
-	length   int
-	current  int
-	theme    color.RGBW
-	interval time.Duration
-}
-
-// NewTurner creates a new turner source.
-func NewTurner(theme color.RGBW, interval time.Duration) Loop {
-	return &turner{0, 0, theme, interval}
-}
-
-func (t *turner) Setup(length int, framerate int) {
-	if t.length != 0 {
-		panic("reused source")
+func applyTurner(theme color.RGBW, i int, destination []color.RGBW) {
+	for j := range destination {
+		destination[j] = color.Off()
 	}
-	if length == 0 {
-		panic("zero length")
+	length := len(destination)
+	destination[(i+0)%length] = color.Off().MixWith(0.1, theme)
+	destination[(i+1)%length] = color.Off().MixWith(0.5, theme)
+	destination[(i+2)%length] = color.Off().MixWith(1.0, theme)
+	destination[(i+3)%length] = color.Off().MixWith(0.5, theme)
+	destination[(i+4)%length] = color.Off().MixWith(0.1, theme)
+}
+
+// Turner puts a rotating light on circular positioned pixels.
+func Turner(theme color.RGBW, interval time.Duration) func(LoopSetting) {
+	return func(l LoopSetting) {
+		applyTurner(theme, 0, l.Start)
+		go func() {
+			defer close(l.Done)
+			if len(l.Destination) == 0 {
+				panic("zero length destination")
+			}
+			length := len(l.Destination)
+			current := 0
+			for {
+				if _, ok := <-l.Tick; !ok {
+					return
+				}
+				for i := range l.Destination {
+					*l.Destination[i] = color.Off()
+				}
+				*l.Destination[(current+0)%length] = color.Off().MixWith(0.1, theme)
+				*l.Destination[(current+1)%length] = color.Off().MixWith(0.5, theme)
+				*l.Destination[(current+2)%length] = color.Off().MixWith(1.0, theme)
+				*l.Destination[(current+3)%length] = color.Off().MixWith(0.5, theme)
+				*l.Destination[(current+4)%length] = color.Off().MixWith(0.1, theme)
+
+				l.Done <- nil
+
+				current = (current + 1) % length
+			}
+		}()
 	}
-	t.length = length
-}
-
-func (t *turner) Peek() []color.RGBW {
-	new := make([]color.RGBW, t.length)
-	new[(t.current+0)%t.length] = color.Off.MixWith(0.1, t.theme)
-	new[(t.current+1)%t.length] = color.Off.MixWith(0.5, t.theme)
-	new[(t.current+2)%t.length] = color.Off.MixWith(1.0, t.theme)
-	new[(t.current+3)%t.length] = color.Off.MixWith(0.5, t.theme)
-	new[(t.current+4)%t.length] = color.Off.MixWith(0.1, t.theme)
-
-	return new
-}
-
-func (t *turner) Pop() []color.RGBW {
-	new := t.Peek()
-	t.current = (t.current + 1) % t.length
-	return new
 }

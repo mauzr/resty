@@ -23,69 +23,58 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type fader struct {
-	duration       time.Duration
-	stepsLeft      int
-	current, steps []color.RGBW
-}
-
-// NewFader returns a transition from the later set start and end in the given time.
-func NewFader(duration time.Duration) Transition {
-	return &fader{duration, 0, nil, nil}
-}
-
-// Setup the transition for use. May be called only once.
-func (f *fader) Setup(start, stop []color.RGBW, framerate int) {
-	if f.current != nil {
-		panic("reused fader")
-	}
-	if len(start) == 0 {
-		panic("start has zero length")
-	}
-	if len(stop) == 0 {
-		panic("end has zero length")
-	}
-	f.stepsLeft = int(f.duration.Seconds() / time.Second.Seconds() * float64(framerate))
-	if len(start) != len(stop) {
-		panic("start and stop have different sizes")
-	}
-	f.current = make([]color.RGBW, len(start))
-	copy(f.current, start)
-	f.steps = make([]color.RGBW, len(start))
-	for i := range f.steps {
-		f.steps[i] = color.RGBW{
-			Red:   (stop[i].Red - start[i].Red) / float64(f.stepsLeft-1),
-			Green: (stop[i].Green - start[i].Green) / float64(f.stepsLeft-1),
-			Blue:  (stop[i].Blue - start[i].Blue) / float64(f.stepsLeft-1),
-			White: (stop[i].White - start[i].White) / float64(f.stepsLeft-1),
+// Fader is a transition that moves to a target color.
+func Fader(duration time.Duration) func(TransitionSetting) {
+	return func(t TransitionSetting) {
+		for i := range t.Destination {
+			if t.Destination[i] == nil {
+				panic("invalid destination")
+			}
+			if t.Desired[i] == nil {
+				panic("invalid desired")
+			}
 		}
+		if len(t.Destination) == 0 {
+			panic("zero length destination")
+		}
+		if len(t.Destination) != len(t.Desired) {
+			panic("desired length is not equal to destination legth")
+		}
+		go func() {
+			defer close(t.Done)
+			stepsLeft := int(duration.Seconds() / time.Second.Seconds() * float64(t.Framerate))
+			steps := make([]color.RGBW, len(t.Destination))
+			for i := range steps {
+				desiredChannels := t.Desired[i].Channels()
+				destinationChannels := (*t.Destination[i]).Channels()
+				steps[i] = color.NewRGBW(
+					(desiredChannels[0]-destinationChannels[0])/float64(stepsLeft),
+					(desiredChannels[1]-destinationChannels[1])/float64(stepsLeft),
+					(desiredChannels[2]-destinationChannels[2])/float64(stepsLeft),
+					(desiredChannels[3]-destinationChannels[3])/float64(stepsLeft),
+				)
+			}
+			for {
+				if _, ok := <-t.Tick; !ok {
+					return
+				}
+				for i := range t.Destination {
+					destinationChannels := (*t.Destination[i]).Channels()
+					stepChannels := steps[i].Channels()
+					c := color.NewRGBW(
+						math.Max(0.0, math.Min(destinationChannels[0]+stepChannels[0], 1.0)),
+						math.Max(0.0, math.Min(destinationChannels[1]+stepChannels[1], 1.0)),
+						math.Max(0.0, math.Min(destinationChannels[2]+stepChannels[2], 1.0)),
+						math.Max(0.0, math.Min(destinationChannels[3]+stepChannels[3], 1.0)),
+					)
+					*t.Destination[i] = c
+				}
+				stepsLeft--
+				if stepsLeft == 0 {
+					return
+				}
+				t.Done <- nil
+			}
+		}()
 	}
-}
-
-// HasNext returns true if the transition contains more colors.
-func (f *fader) HasNext() bool {
-	return f.stepsLeft != 0
-}
-
-// Peer the next generated color (Next invocation will return the same color).
-func (f *fader) Peek() []color.RGBW {
-	new := make([]color.RGBW, len(f.current))
-	copy(new, f.current)
-	return new
-}
-
-// Pop the next generated color (Next invocation will return the next color).
-func (f *fader) Pop() []color.RGBW {
-	new := f.Peek()
-	if !f.HasNext() {
-		panic("no values left")
-	}
-	for i := range f.current {
-		f.current[i].Red = math.Max(0.0, math.Min(f.current[i].Red+f.steps[i].Red, 1.0))
-		f.current[i].Green = math.Max(0.0, math.Min(f.current[i].Green+f.steps[i].Green, 1.0))
-		f.current[i].Blue = math.Max(0.0, math.Min(f.current[i].Blue+f.steps[i].Blue, 1.0))
-		f.current[i].White = math.Max(0.0, math.Min(f.current[i].White+f.steps[i].White, 1.0))
-	}
-	f.stepsLeft--
-	return new
 }

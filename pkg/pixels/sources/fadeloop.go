@@ -22,72 +22,49 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type fadeLoop struct {
-	length       int
-	steps        int
-	framerate    int
-	duration     time.Duration
-	up           bool
-	lower, upper color.RGBW
-	current      []color.RGBW
-	currentFader Transition
-}
-
-// NewFadeLoop creates a new fade loop.
-func NewFadeLoop(lower, upper color.RGBW, duration time.Duration) Loop {
-	return &fadeLoop{
-		0,
-		0,
-		0,
-		duration,
-		true,
-		lower, upper,
-		nil,
-		nil,
-	}
-}
-
-// Setup the loop for use. May be called only once.
-func (f *fadeLoop) Setup(length int, framerate int) {
-	if f.current != nil {
-		panic("reused source")
-	}
-	if length == 0 {
-		panic("zero length")
-	}
-	f.framerate = framerate
-	f.length = length
-	f.current = make([]color.RGBW, length)
-	for i := range f.current {
-		f.current[i] = f.lower
-	}
-}
-
-// Peer the next generated color (Next invocation will return the same color).
-func (f *fadeLoop) Peek() []color.RGBW {
-	current := make([]color.RGBW, f.length)
-	copy(current, f.current)
-	return current
-}
-
-// Pop the next generated color (Next invocation will return the next color).
-func (f *fadeLoop) Pop() []color.RGBW {
-	if f.currentFader == nil {
-		f.up = !f.up
-		target := f.lower
-		if f.up {
-			target = f.upper
+// FadeLoop loops between two color values using fade as transition.
+func FadeLoop(duration time.Duration, lower, upper color.RGBW) func(LoopSetting) {
+	return func(l LoopSetting) {
+		if len(l.Destination) == 0 || lower == nil || upper == nil {
+			panic("invalid parameters")
 		}
-		stop := make([]color.RGBW, f.length)
-		for i := range stop {
-			stop[i] = target
+		for i := range l.Start {
+			l.Start[i] = lower
 		}
-		f.currentFader = NewFader(f.duration / 2)
-		f.currentFader.Setup(f.current, stop, f.framerate)
+		go func() {
+			defer close(l.Done)
+			up := false
+			desired := make([]color.RGBW, len(l.Destination))
+			for {
+				up = !up
+				target := lower
+				if up {
+					target = upper
+				}
+				for i := range desired {
+					desired[i] = target
+				}
+				done := make(chan interface{})
+				t := TransitionSetting{l.Tick, done, l.Destination, desired, l.Framerate}
+				handleFadeLoopStep(duration, done, t, l)
+			}
+		}()
 	}
-	f.current = f.currentFader.Pop()
-	if !f.currentFader.HasNext() {
-		f.currentFader = nil
+}
+
+func handleFadeLoopStep(duration time.Duration, done <-chan interface{}, t TransitionSetting, l LoopSetting) {
+	go Fader(duration / 2)(t)
+	for ok := true; ok; {
+		_, ok = <-done
+		l.Done <- nil
 	}
-	return f.Peek()
+	select {
+	case _, ok := <-l.Tick:
+		if ok {
+			panic("missed tick")
+		} else {
+			return
+		}
+	default:
+	}
 }

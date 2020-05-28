@@ -21,24 +21,20 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-// Loop is a color generator that can generate endlessly.
-type Loop interface {
-	// Pop the next generated color (Next invocation will return the next color).
-	Pop() []color.RGBW
-	// Peer the next generated color (Next invocation will return the same color).
-	Peek() []color.RGBW
-	// Setup the loop for use. May be called only once.
-	Setup(length int, framerate int)
+// LoopSetting is the value interface with a loop generator.
+type LoopSetting struct {
+	Tick        <-chan interface{}
+	Done        chan<- interface{}
+	Destination []*color.RGBW
+	Start       []color.RGBW
+	Framerate   int
 }
 
-// Transition is a color generator that converts the current pixel settings to an other.
-type Transition interface {
-	// Pop the next generated color (Next invocation will return the next color).
-	Pop() []color.RGBW
-	// Peer the next generated color (Next invocation will return the same color).
-	Peek() []color.RGBW
-	// HasNext returns true if the transition contains more colors.
-	HasNext() bool
-	// Setup the transition for use. May be called only once.
-	Setup(start, stop []color.RGBW, framerate int)
+// TransitionSetting is the value interface with a transition generator.
+type TransitionSetting struct {
+	Tick        <-chan interface{}
+	Done        chan<- interface{}
+	Destination []*color.RGBW
+	Desired     []color.RGBW
+	Framerate   int
 }

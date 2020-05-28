@@ -18,61 +18,63 @@ package sources
 
 import (
 	"math"
+	"time"
 
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type scanDoor struct {
-	lower, upper                color.RGBW
-	position, change, maxHeight float64
-	positions                   [11][2]float64
+func scanDoorLUT(lower, upper color.RGBW, speed time.Duration, framerate int) [][11]color.RGBW {
+	destinationPositions := [11]float64{0, 1 / 4, 2 / 4, 3 / 4, 1, 1, 1, 3 / 4, 2 / 4, 1 / 4, 0}
+	lut := make([][11]color.RGBW, int(speed.Seconds()*float64(framerate/2)))
+	for i := range lut {
+		for position := range lut[i] {
+			relPosition := float64(position) / float64(len(lut[i]))
+			distance := math.Abs(destinationPositions[position] - relPosition)
+			lut[i][position] = lower.MixWith(distance, upper)
+		}
+	}
+	return lut
 }
 
-// NewScanDoor returns a Loop that lets the pixels around doors do something fancy.
-func NewScanDoor(theme color.RGBW) Loop {
-	return &scanDoor{
-		color.Off, theme,
-		0.0, 0, 5.0,
-		[11][2]float64{
-			{0, 0}, {0, 1}, {0, 2}, {0, 3},
-			{0, 4}, {1, 4}, {2, 4},
-			{2, 3}, {2, 2}, {2, 1}, {2, 0},
-		},
+// ScanDoor does some specific things with the door pixels in my home.
+func ScanDoor(theme color.RGBW, speed time.Duration) func(LoopSetting) {
+	if theme == nil {
+		panic("theme not set")
 	}
-}
+	return func(l LoopSetting) {
+		lut := scanDoorLUT(color.Off(), theme, speed, l.Framerate)
 
-// Setup the loop for use. May be called only once.
-func (s *scanDoor) Setup(length int, framerate int) {
-	if s.change != 0 {
-		panic("reused source")
-	}
-	if length != 11 {
-		panic("strip length must be 11")
-	}
-	s.change = 0.3 / float64(framerate)
-}
+		for i := range l.Start {
+			l.Start[i] = lut[0][i]
+		}
+		go func() {
+			defer close(l.Done)
+			if len(l.Destination) == 0 {
+				panic("zero length destination")
+			}
 
-// Peer the next generated color (Next invocation will return the same color).
-func (s *scanDoor) Peek() []color.RGBW {
-	new := make([]color.RGBW, 11)
-	for i, pixel := range s.positions {
-		new[i] = s.lower.MixWith(math.Abs(pixel[1]-s.position)/s.maxHeight, s.upper)
-	}
+			if len(l.Destination) != 11 {
+				panic("strip length must be 11")
+			}
+			position := 0
+			up := true
+			for {
+				if _, ok := <-l.Tick; !ok {
+					return
+				}
+				for i := range l.Destination {
+					*l.Destination[i] = lut[position][i]
+				}
+				l.Done <- nil
 
-	return new
-}
-
-// Pop the next generated color (Next invocation will return the next color).
-func (s *scanDoor) Pop() []color.RGBW {
-	new := s.Peek()
-	s.position += s.change
-	switch {
-	case s.position >= s.maxHeight:
-		s.position = 1.0
-		s.change = -s.change
-	case s.position <= 0.0:
-		s.position = 0.0
-		s.change = -s.change
+				if up {
+					position++
+					up = position != len(lut)-1
+				} else {
+					position--
+					up = position == 0
+				}
+			}
+		}()
 	}
-	return new
 }

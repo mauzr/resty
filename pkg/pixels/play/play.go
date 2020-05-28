@@ -21,18 +21,18 @@ import (
 	"errors"
 	"time"
 
+	"go.eqrx.net/mauzr/pkg/pixels"
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 	"go.eqrx.net/mauzr/pkg/pixels/sources"
-	"go.eqrx.net/mauzr/pkg/pixels/strip"
 )
 
 // DefaultParts creates a map with the default part setup.
-func DefaultParts() map[string]sources.Loop {
-	return map[string]sources.Loop{
-		"off":     sources.NewStatic(color.Off),
-		"bright":  sources.NewStatic(color.Bright),
-		"alert":   sources.NewFadeLoop(color.Off.MixWith(0.1, color.RGBW{Red: 1.0}), color.RGBW{Red: 1.0}, 3*time.Second),
-		"rainbow": sources.NewRainbow(3 * time.Second),
+func DefaultParts() map[string]func(sources.LoopSetting) {
+	return map[string]func(sources.LoopSetting){
+		"off":     sources.Static(color.Off()),
+		"bright":  sources.Static(color.Bright()),
+		"alert":   sources.FadeLoop(3*time.Second, color.Off().MixWith(0.1, color.Red()), color.Red()),
+		"rainbow": sources.Rainbow(3 * time.Second),
 	}
 }
 
@@ -47,83 +47,98 @@ type Request struct {
 // ErrUnknownPart happens when a part was requested that is now known.
 var ErrUnknownPart = errors.New("unknown part")
 
-func setupParts(parts map[string]sources.Loop, output strip.Output, framerate int) {
-	alreadySetup := make([]sources.Loop, 0)
-	for _, value := range parts {
-		setup := false
-		for _, other := range alreadySetup {
-			if other == value {
-				setup = true
-			}
-		}
-		if !setup {
-			value.Setup(output.Length(), framerate)
-			alreadySetup = append(alreadySetup, value)
-		}
+func handleRequest(parts map[string]func(sources.LoopSetting), request Request) string {
+	defer close(request.Response)
+	if cap(request.Response) < 1 {
+		panic("received blocking channel for response")
+	}
+
+	if _, ok := parts[request.Part]; !ok {
+		request.Response <- ErrUnknownPart
+		return ""
+	}
+	return request.Part
+}
+
+func drainDone(c <-chan interface{}) {
+	for ok := true; ok; {
+		_, ok = <-c
 	}
 }
 
-func shutdown(colors []color.RGBW, output strip.Output, framerate int) {
-	target := make([]color.RGBW, len(colors))
-	for i := range target {
-		target[i] = color.Unmanaged
+func managePart(parts map[string]func(sources.LoopSetting), currentPart string, manager pixels.SourceManager, requests <-chan Request) string {
+	loopDone := make(chan interface{})
+	defer drainDone(loopDone)
+	transitionDone := make(chan interface{})
+	defer drainDone(transitionDone)
+	loopTick := make(chan interface{})
+	defer close(loopTick)
+	transitionTick := make(chan interface{})
+	defer close(transitionTick)
+
+	desired := make([]color.RGBW, len(manager.Destination()))
+	l := sources.LoopSetting{Tick: loopTick, Done: loopDone, Destination: manager.Destination(), Framerate: manager.Framerate(), Start: desired}
+	parts[currentPart](l)
+	t := sources.TransitionSetting{Tick: transitionTick, Done: transitionDone, Destination: manager.Destination(), Desired: desired, Framerate: manager.Framerate()}
+	sources.Fader(2 * time.Second)(t)
+
+	for ok := true; ok; {
+		select {
+		case <-manager.TickReceiveChan():
+			transitionTick <- nil
+			_, ok = <-transitionDone
+			manager.DoneSendChan() <- nil
+		case r, ok := <-requests:
+			if !ok {
+				return ""
+			}
+			if nextPart := handleRequest(parts, r); nextPart != "" && nextPart != currentPart {
+				return nextPart
+			}
+		}
 	}
-	source := sources.NewFader(3 * time.Second)
-	source.Setup(colors, target, framerate)
-	for source.HasNext() {
-		output.Set(source.Pop())
+	for {
+		select {
+		case <-manager.TickReceiveChan():
+			loopTick <- nil
+			if _, ok := <-loopDone; !ok {
+				panic("loop stopped")
+			}
+			manager.DoneSendChan() <- nil
+		case r, ok := <-requests:
+			if !ok {
+				return ""
+			}
+			if nextPart := handleRequest(parts, r); nextPart != "" {
+				return nextPart
+			}
+		}
 	}
 }
 
 // New creates a new play manager.
-func New(parts map[string]sources.Loop, output strip.Output, framerate int, requests <-chan Request) {
-	if framerate < 0 {
-		panic("framerate must be > 0")
-	}
-	colors := make([]color.RGBW, output.Length())
-	for i := range colors {
-		colors[i] = color.Unmanaged
+func New(parts map[string]func(sources.LoopSetting), manager pixels.SourceManager, requests <-chan Request) {
+	destination := manager.Destination()
+	shutdownDesired := make([]color.RGBW, len(destination))
+
+	for i := range destination {
+		*destination[i] = color.Unmanaged()
+		shutdownDesired[i] = color.Unmanaged()
 	}
 
-	setupParts(parts, output, framerate)
 	go func() {
-		currentPart := "default"
-		var transition sources.Transition
-		defer output.Close()
-		defer shutdown(colors, output, framerate)
-
-		for {
-			select {
-			case request, ok := <-requests:
-				switch {
-				case !ok:
-					return
-				case cap(request.Response) < 1:
-					close(request.Response)
-					panic("received blocking channel for response")
-				default:
-					if _, ok := parts[request.Part]; !ok {
-						request.Response <- ErrUnknownPart
-						close(request.Response)
-					} else {
-						currentPart = request.Part
-						request.Response <- nil
-						close(request.Response)
-						transition = sources.NewFader(3 * time.Second)
-						transition.Setup(colors, parts[currentPart].Peek(), framerate)
-					}
-				}
-			case output.SetChannel() <- colors:
-				switch {
-				case transition == nil:
-					colors = parts[currentPart].Pop()
-				case transition.HasNext():
-					colors = transition.Pop()
-				default:
-					transition = nil
-					colors = parts[currentPart].Pop()
-				}
-			}
+		nextPart := "default"
+		for nextPart != "" {
+			nextPart = managePart(parts, nextPart, manager, requests)
 		}
+
+		t := sources.TransitionSetting{
+			Tick:        manager.TickReceiveChan(),
+			Done:        manager.DoneSendChan(),
+			Destination: destination,
+			Desired:     shutdownDesired,
+			Framerate:   manager.Framerate(),
+		}
+		sources.Fader(3 * time.Second)(t)
 	}()
 }

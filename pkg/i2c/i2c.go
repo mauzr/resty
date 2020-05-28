@@ -40,13 +40,13 @@ type Device interface {
 // operation represents an i2c operation.
 type operation struct {
 	// addr is the I2C device address.
-	addr uint16 //nolint
+	addr uint16 //nolint:structcheck // This is actually used.
 	// flags for the operation (like, is this a read or write).
-	flags uint16 //nolint
+	flags uint16 //nolint:structcheck // This is actually used.
 	// len is the data length.
-	len uint16 //nolint
+	len uint16 //nolint:structcheck // This is actually used.
 	// buf points to the data.
-	buf uintptr //nolint
+	buf uintptr //nolint:structcheck // This is actually used.
 }
 
 // operations is a list of operation that C understands.

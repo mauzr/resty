@@ -20,37 +20,29 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type static struct {
-	length int
-	target color.RGBW
-}
-
-// NewStatic returns a Loop that always sets the given color.
-func NewStatic(target color.RGBW) Loop {
-	return &static{0, target}
-}
-
-// Setup the loop for use. May be called only once.
-func (s *static) Setup(length int, _ int) {
-	if s.length != 0 {
-		panic("reused source")
+// Static just puts a given value to the destination.
+func Static(target color.RGBW) func(LoopSetting) {
+	if target == nil {
+		panic("target not set")
 	}
-	if length == 0 {
-		panic("zero length")
+	return func(l LoopSetting) {
+		for i := range l.Start {
+			l.Start[i] = target
+		}
+		go func() {
+			defer close(l.Done)
+			if len(l.Destination) == 0 {
+				panic("zero length destination")
+			}
+			for {
+				if _, ok := <-l.Tick; !ok {
+					return
+				}
+				for i := range l.Destination {
+					*l.Destination[i] = target
+				}
+				l.Done <- nil
+			}
+		}()
 	}
-	s.length = length
-}
-
-// Peer the next generated color (Next invocation will return the same color).
-func (s *static) Peek() []color.RGBW {
-	new := make([]color.RGBW, s.length)
-	for i := range new {
-		new[i] = s.target
-	}
-	return new
-}
-
-// Pop the next generated color (Next invocation will return the next color).
-func (s *static) Pop() []color.RGBW {
-	return s.Peek()
 }

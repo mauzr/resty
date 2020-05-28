@@ -16,6 +16,10 @@ limitations under the License.
 
 package errors
 
+import (
+	"fmt"
+)
+
 // GoOnClose calls a callback in a goroutine when the error channel closed.
 func GoOnClose(cb func(), in <-chan error) <-chan error {
 	return OnClose(func() { go cb() }, in)
@@ -61,6 +65,25 @@ func OnFirstError(cb func(error), in <-chan error) <-chan error {
 				close(out)
 				return
 			}
+		}
+	}()
+	return out
+}
+
+// WrapErrorChan wraps all errors in a given channel with the given name.
+func WrapErrorChan(name string, in <-chan error) <-chan error {
+	out := make(chan error)
+	go func() {
+		for {
+			err, ok := <-in
+			if !ok {
+				close(out)
+				return
+			}
+			if err == nil {
+				panic(fmt.Sprintf("%s received nil as error", name))
+			}
+			out <- fmt.Errorf("%s: %w", name, err)
 		}
 	}()
 	return out

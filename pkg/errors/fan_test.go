@@ -57,7 +57,7 @@ func TestMerge(t *testing.T) {
 		t.FailNow()
 	default:
 	}
-	err := fmt.Errorf("somerror") // nolint
+	err := fmt.Errorf("somerror") //nolint:goerr113 // Just for testing.
 	b <- err
 
 	holdTime := 1 * time.Millisecond

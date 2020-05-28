@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -44,16 +45,13 @@ func (c *Client) RESTServer(ctx context.Context, handler http.Handler, name stri
 	go func() {
 		log.Root.Debug("requesting server tls certificates for %v", name)
 		tlsConfig, err := c.serverTLSConfig(name, pkis...)
-		log.Root.Debug("requested server tls certificates for %v: %v", name, err)
 		if err != nil {
 			errOut <- err
 			close(errOut)
 			return
 		}
 
-		log.Root.Debug("looking up server names for %v", name)
 		addrs, err := net.LookupHost(name)
-		log.Root.Debug("looked up server names for %v: %v", name, err)
 		if err != nil {
 			errOut <- err
 			close(errOut)
@@ -67,7 +65,7 @@ func (c *Client) RESTServer(ctx context.Context, handler http.Handler, name stri
 				// Skip IPv4 addresses.
 				continue
 			}
-			server := http.Server{
+			server := &http.Server{
 				Addr:              net.JoinHostPort(addr, "443"),
 				TLSConfig:         tlsConfig,
 				ReadHeaderTimeout: 3 * time.Second,
@@ -77,19 +75,19 @@ func (c *Client) RESTServer(ctx context.Context, handler http.Handler, name stri
 			err := make(chan error)
 			shutdowns = append(shutdowns, server.Shutdown)
 			errs = append(errs, err)
-			go func() {
+			go func(server *http.Server, err chan<- error) {
 				if e := server.ListenAndServeTLS("", ""); !errors.Is(e, http.ErrServerClosed) {
-					err <- e
+					err <- fmt.Errorf("http server for %s: %w", server.Addr, e)
 				}
 				close(err)
-			}()
+			}(server, err)
 		}
 		shutdownErrors := make(chan error)
 		go func() {
 			<-ctx.Done()
 			for _, s := range shutdowns {
 				if err := s(context.Background()); err != nil {
-					shutdownErrors <- err
+					shutdownErrors <- fmt.Errorf("http server shutdown: %w", err)
 				}
 			}
 			close(shutdownErrors)

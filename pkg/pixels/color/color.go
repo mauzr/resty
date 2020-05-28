@@ -17,17 +17,52 @@ limitations under the License.
 // Package color contains color types.
 package color
 
-var (
-	// Off turns the pixel off.
-	Off = RGBW{}
-	// Bright sets the pixel to as bright as possible.
-	Bright = RGBW{White: 1.0}
-	// Unmanaged indicates that the pixel is not actively managed.
-	Unmanaged = RGBW{Red: 1.0}
-	// Error indicates that something is wrong.
-	Error = Off.MixWith(0.1, RGBW{Red: 1.0})
-	// Warning indicates that something requires attention.
-	Warning = Off.MixWith(0.1, RGBW{Red: 1.0, Green: 1.0})
-	// Good indicated that everything is fine.
-	Good = Off.MixWith(0.1, RGBW{Green: 1.0})
-)
+// Yellow returns the the color yellow.
+func Yellow() RGBW {
+	return &rgbw{[4]float64{1.0, 0.9, 0, 0}}
+}
+
+// Red returns  is the the color red.
+func Red() RGBW {
+	return &rgbw{[4]float64{1.0, 0, 0, 0}}
+}
+
+// White returns is the the color white.
+func White() RGBW {
+	return &rgbw{[4]float64{0, 0, 0, 1.0}}
+}
+
+// Green returns is the the color green.
+func Green() RGBW {
+	return &rgbw{[4]float64{0, 1.0, 0, 0}}
+}
+
+// Off turns the pixel off.
+func Off() RGBW {
+	return rgbw{[4]float64{0, 0, 0, 0}}
+}
+
+// Bright sets the pixel to as bright as possible.
+func Bright() RGBW {
+	return White()
+}
+
+// Unmanaged indicates that the pixel is not actively managed.
+func Unmanaged() RGBW {
+	return rgbw{[4]float64{1.0, 0, 0, 0}}
+}
+
+// Error indicates that something is wrong.
+func Error() RGBW {
+	return Off().MixWith(0.1, Red())
+}
+
+// Warning indicates that something requires attention.
+func Warning() RGBW {
+	return Off().MixWith(0.1, Yellow())
+}
+
+// Good indicated that everything is fine.
+func Good() RGBW {
+	return Off().MixWith(0.1, Green())
+}

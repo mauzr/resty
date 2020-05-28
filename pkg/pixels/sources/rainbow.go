@@ -23,43 +23,44 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type rainbow struct {
-	length        int
-	cycleDuration time.Duration
-	offset, speed float64
-}
-
-// NewRainbow returns a Loop that lets the pixels shine in a full color rainbow.
-func NewRainbow(cycleDuration time.Duration) Loop {
-	return &rainbow{0, cycleDuration, 0, 0}
-}
-
-// Setup the loop for use. May be called only once.
-func (r *rainbow) Setup(length int, framerate int) {
-	if r.length != 0 {
-		panic("reused source")
+func rainbowLUT(destinationLength int, duration time.Duration, framerate int) [][]color.RGBW {
+	lut := make([][]color.RGBW, int(duration.Seconds()*float64(framerate)))
+	stepDelta := 1 / float64(len(lut))
+	step := 0.0
+	for i := range lut {
+		lut[i] = make([]color.RGBW, destinationLength)
+		for j := range lut[i] {
+			lut[i][j] = color.HSV{Hue: math.Mod(float64(i)*step, 1.0), Saturation: 1, Value: 1}.RGBW()
+		}
+		step += stepDelta
 	}
-	if length == 0 {
-		panic("zero length")
-	}
-	r.length = length
-	r.speed = 1 / (r.cycleDuration.Seconds() * float64(framerate))
+	return lut
 }
 
-// Peer the next generated color (Next invocation will return the same color).
-func (r *rainbow) Peek() []color.RGBW {
-	new := make([]color.RGBW, r.length)
-	step := 1.0 / float64(r.length)
-	for i := range new {
-		new[i] = color.HSV{Hue: math.Mod(float64(i)*step+r.offset, 1.0), Saturation: 1, Value: 1}.RGBW()
+// Rainbow fills the controlled pixels with a rainbow that has a moving offset.
+func Rainbow(duration time.Duration) func(LoopSetting) {
+	return func(l LoopSetting) {
+		lut := rainbowLUT(len(l.Destination), duration, l.Framerate)
+		for i := range l.Start {
+			l.Start[i] = lut[0][i]
+		}
+		go func() {
+			defer close(l.Done)
+			if len(l.Destination) == 0 {
+				panic("zero length destination")
+			}
+
+			offset := 0
+			for {
+				if _, ok := <-l.Tick; !ok {
+					return
+				}
+				for i := range l.Destination {
+					*l.Destination[i] = lut[offset][i]
+				}
+				l.Done <- nil
+				offset = (offset + 1) % len(lut)
+			}
+		}()
 	}
-
-	return new
-}
-
-// Pop the next generated color (Next invocation will return the next color).
-func (r *rainbow) Pop() []color.RGBW {
-	new := r.Peek()
-	r.offset += r.speed
-	return new
 }

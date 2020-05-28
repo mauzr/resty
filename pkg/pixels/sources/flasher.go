@@ -22,57 +22,40 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
-type flasher struct {
-	length       int
-	duration     time.Duration
-	currentStep  int
-	steps        []color.RGBW
-	upper, lower color.RGBW
-}
-
-// NewFlasher returns a Loop that lets a given color flash (3/4 color, 1/4 black).
-func NewFlasher(lower, upper color.RGBW, duration time.Duration) Loop {
-	return &flasher{
-		0,
-		duration,
-		0,
-		nil,
-		upper, lower,
+// Flasher jumps between colors without a transition.
+func Flasher(duration time.Duration, lower, upper color.RGBW) func(LoopSetting) {
+	if lower == nil || upper == nil {
+		panic("lower or upper not set")
 	}
-}
-
-// Setup the loop for use. May be called only once.
-func (f *flasher) Setup(length int, framerate int) {
-	if f.length != 0 {
-		panic("reused source")
-	}
-	if length == 0 {
-		panic("zero length")
-	}
-	f.length = length
-	stepLength := f.duration.Seconds() * float64(framerate)
-	f.steps = make([]color.RGBW, int(stepLength))
-	for i := range f.steps {
-		if float64(i)/float64(len(f.steps)) < 0.75 {
-			f.steps[i] = f.upper
-		} else {
-			f.steps[i] = f.lower
+	return func(l LoopSetting) {
+		stepLength := duration.Seconds() * float64(l.Framerate)
+		for i := range l.Start {
+			l.Start[i] = lower
 		}
+		go func() {
+			defer close(l.Done)
+			if len(l.Destination) == 0 {
+				panic("zero length")
+			}
+			steps := make([]color.RGBW, int(stepLength))
+			for i := range steps {
+				if float64(i)/float64(len(steps)) < 0.75 {
+					steps[i] = upper
+				} else {
+					steps[i] = lower
+				}
+			}
+			currentStep := 0
+			for {
+				if _, ok := <-l.Tick; !ok {
+					return
+				}
+				for i := range l.Destination {
+					*l.Destination[i] = steps[currentStep]
+				}
+				l.Done <- nil
+				currentStep = (currentStep + 1) % len(steps)
+			}
+		}()
 	}
-}
-
-// Peer the next generated color (Next invocation will return the same color).
-func (f *flasher) Peek() []color.RGBW {
-	new := make([]color.RGBW, f.length)
-	for i := range new {
-		new[i] = f.steps[f.currentStep]
-	}
-	return new
-}
-
-// Pop the next generated color (Next invocation will return the next color).
-func (f *flasher) Pop() []color.RGBW {
-	new := f.Peek()
-	f.currentStep = (f.currentStep + 1) % len(f.steps)
-	return new
 }

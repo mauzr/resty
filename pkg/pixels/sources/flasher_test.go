@@ -28,22 +28,67 @@ import (
 // TestFlasher: If the flasher actually flashes.
 func TestFlasher(t *testing.T) {
 	assert := assert.New(t)
-	fader := sources.NewFlasher(color.Off, color.Bright, 1*time.Second)
-	fader.Setup(1, 4)
-	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
-	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
-	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
-	assert.Equal([]color.RGBW{color.Off}, fader.Pop(), "expected other value")
-	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
-	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
-	assert.Equal([]color.RGBW{color.Bright}, fader.Pop(), "expected other value")
-	assert.Equal([]color.RGBW{color.Off}, fader.Pop(), "expected other value")
+	tick := make(chan interface{})
+	done := make(chan interface{})
+	v := color.Off()
+	destination := []*color.RGBW{
+		&v,
+	}
+	c := sources.LoopSetting{
+		Tick:        tick,
+		Done:        done,
+		Destination: destination,
+		Start:       make([]color.RGBW, 1),
+		Framerate:   4,
+	}
+	sources.Flasher(time.Second, color.Off(), color.Bright())(c)
+	tick <- nil
+	<-done
+	assert.Equal(color.Bright().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
+	assert.Equal(color.Bright().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
+	assert.Equal(color.Bright().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
+	assert.Equal(color.Off().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
+	assert.Equal(color.Bright().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
+	assert.Equal(color.Bright().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
+	assert.Equal(color.Bright().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
+	assert.Equal(color.Off().Channels(), v.Channels(), "expected other value")
+	tick <- nil
+	<-done
 }
 
+// BenchmarkFlasher benchmarks the flasher loop.
 func BenchmarkFlasher(b *testing.B) {
-	fader := sources.NewFlasher(color.Off, color.Bright, 1*time.Second)
-	fader.Setup(benchmarkStripLength, 4)
+	tick := make(chan interface{})
+	done := make(chan interface{})
+	destination := make([]*color.RGBW, benchmarkStripLength)
+	for i := range destination {
+		v := color.Off()
+		destination[i] = &v
+	}
+	c := sources.LoopSetting{
+		Tick:        tick,
+		Done:        done,
+		Destination: destination,
+		Start:       make([]color.RGBW, benchmarkStripLength),
+		Framerate:   4,
+	}
+	sources.Flasher(time.Second, color.Off(), color.Bright())(c)
 	for i := 0; i < b.N; i++ {
-		fader.Pop()
+		tick <- nil
+		<-done
 	}
 }

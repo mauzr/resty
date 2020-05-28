@@ -35,17 +35,17 @@ func (h HSV) RGBW() RGBW {
 
 	switch int(i) % 6 {
 	case 0:
-		return RGBW{h.Value, t, p, 0}
+		return &rgbw{[4]float64{h.Value, t, p, 0}}
 	case 1:
-		return RGBW{q, h.Value, p, 0}
+		return &rgbw{[4]float64{q, h.Value, p, 0}}
 	case 2:
-		return RGBW{p, h.Value, t, 0}
+		return &rgbw{[4]float64{p, h.Value, t, 0}}
 	case 3:
-		return RGBW{p, q, h.Value, 0}
+		return &rgbw{[4]float64{p, q, h.Value, 0}}
 	case 4:
-		return RGBW{t, p, h.Value, 0}
+		return &rgbw{[4]float64{t, p, h.Value, 0}}
 	case 5:
-		return RGBW{h.Value, p, q, 0}
+		return &rgbw{[4]float64{h.Value, p, q, 0}}
 	}
 	panic("Invalid calculation")
 }

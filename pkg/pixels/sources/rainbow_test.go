@@ -20,13 +20,29 @@ import (
 	"testing"
 	"time"
 
+	"go.eqrx.net/mauzr/pkg/pixels/color"
 	"go.eqrx.net/mauzr/pkg/pixels/sources"
 )
 
+// BenchmarkRainbow benchmarks the rainbow loop.
 func BenchmarkRainbow(b *testing.B) {
-	rainbow := sources.NewRainbow(1 * time.Second)
-	rainbow.Setup(benchmarkStripLength, 4)
+	tick := make(chan interface{})
+	done := make(chan interface{})
+	destination := make([]*color.RGBW, benchmarkStripLength)
+	for i := range destination {
+		v := color.Off()
+		destination[i] = &v
+	}
+	c := sources.LoopSetting{
+		Tick:        tick,
+		Done:        done,
+		Destination: destination,
+		Start:       make([]color.RGBW, benchmarkStripLength),
+		Framerate:   4,
+	}
+	sources.Rainbow(time.Second)(c)
 	for i := 0; i < b.N; i++ {
-		rainbow.Pop()
+		tick <- nil
+		<-done
 	}
 }

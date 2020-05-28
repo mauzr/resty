@@ -25,24 +25,24 @@ import (
 	"regexp"
 	"time"
 
-	"go.eqrx.net/mauzr/pkg/pixels/strip"
-
 	"unsafe"
 
 	"go.eqrx.net/mauzr/pkg/file"
+	"go.eqrx.net/mauzr/pkg/log"
+	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
 type operation struct {
 	txBuf       uint64
-	rxBuf       uint64 //nolint
-	len         uint32 //nolint
+	rxBuf       uint64 //nolint:structcheck // Keep the name for future use.
+	len         uint32
 	speedHz     uint32
-	delayUsecs  uint16 //nolint
-	bitsPerWord uint8  //nolint
-	csChange    uint8  //nolint
-	txNbits     uint8  //nolint
-	rxNbits     uint8  //nolint
-	pad         uint16 //nolint
+	delayUsecs  uint16 //nolint:structcheck // Keep the name for future use.
+	bitsPerWord uint8  //nolint:structcheck // Keep the name for future use.
+	csChange    uint8  //nolint:structcheck // Keep the name for future use.
+	txNbits     uint8  //nolint:structcheck // Keep the name for future use.
+	rxNbits     uint8  //nolint:structcheck // Keep the name for future use.
+	pad         uint16 //nolint:structcheck // Keep the name for future use.
 }
 
 func channelToByte(channel float64) uint8 {
@@ -50,6 +50,15 @@ func channelToByte(channel float64) uint8 {
 		panic(fmt.Sprintf("illegal channel value: %f", channel))
 	}
 	return uint8(255.0 * channel)
+}
+
+func translate(colors []color.RGBW, translated []byte, lut [][]byte, translationFactor int) {
+	for i := range colors {
+		copy(translated[(i*4+0)*translationFactor:], lut[channelToByte(colors[i].Green())])
+		copy(translated[(i*4+1)*translationFactor:], lut[channelToByte(colors[i].Red())])
+		copy(translated[(i*4+2)*translationFactor:], lut[channelToByte(colors[i].Blue())])
+		copy(translated[(i*4+3)*translationFactor:], lut[channelToByte(colors[i].White())])
+	}
 }
 
 func createLut() ([][]byte, int) {
@@ -104,7 +113,16 @@ func determineSpeed() uint32 {
 }
 
 // New creates a new manager the outputs pixel data from a strip input to the actual pixels.
-func New(input strip.Input, path string, framerate int) <-chan error {
+func New(colors []color.RGBW, sources []Source, path string, framerate int) <-chan error {
+	if framerate <= 0 {
+		panic("invalid framerate")
+	}
+	if len(colors) == 0 {
+		panic("invalid colors")
+	}
+	if len(sources) == 0 {
+		panic("invalid sources")
+	}
 	speed := determineSpeed()
 
 	errors := make(chan error)
@@ -127,31 +145,33 @@ func New(input strip.Input, path string, framerate int) <-chan error {
 			}
 		}()
 
-		for {
+		translated := make([]byte, len(colors)*translationFactor*4)
+		arg := operation{
+			txBuf:   uint64(uintptr(unsafe.Pointer(&translated[0]))),
+			len:     uint32(len(translated)),
+			speedHz: speed,
+		}
+		for allClosed := false; !allClosed; {
 			<-ticker.C
-
-			colors, ok := input.Get()
-			if !ok {
-				return
-			}
-			translated := make([]byte, 0, len(colors)*translationFactor)
-			for i := range colors {
-				translated = append(translated, lut[channelToByte(colors[i].Green)]...)
-				translated = append(translated, lut[channelToByte(colors[i].Red)]...)
-				translated = append(translated, lut[channelToByte(colors[i].Blue)]...)
-				translated = append(translated, lut[channelToByte(colors[i].White)]...)
-			}
-			arg := operation{
-				txBuf:   uint64(uintptr(unsafe.Pointer(&translated[0]))),
-				len:     uint32(len(translated)),
-				speedHz: speed,
-			}
-			err := f.IoctlPointerArgument(ioctl, unsafe.Pointer(&arg))()
-			if err != nil {
-				errors <- err
-				return
+			allClosed = handleSources(ticker.C, sources)
+			translate(colors, translated, lut, translationFactor)
+			if err := f.IoctlPointerArgument(ioctl, unsafe.Pointer(&arg))(); err != nil {
+				log.Root.Warning("could not update pixels: %v", err)
 			}
 		}
 	}()
 	return errors
+}
+
+func handleSources(ticker <-chan time.Time, sources []Source) bool {
+	for _, s := range sources {
+		s.SendTick(ticker)
+	}
+	allClosed := true
+	for _, s := range sources {
+		if ok := s.AwaitDone(ticker); ok {
+			allClosed = false
+		}
+	}
+	return allClosed
 }

@@ -36,7 +36,6 @@ func ExposeSend(ctx context.Context, c rest.Client, mux rest.Mux, input gpio.Inp
 		return fmt.Errorf("could not poll input for testing: %w", err)
 	}
 	ok := true
-	fmt.Println(path)
 	mux.Endpoint(path, func(query *rest.Request) {
 		if !ok {
 			query.Status = http.StatusInternalServerError
@@ -49,25 +48,25 @@ func ExposeSend(ctx context.Context, c rest.Client, mux rest.Mux, input gpio.Inp
 			query.ResponseBody, query.InternalErr = json.Marshal(&v)
 		}
 	})
-
+	if err := input.Events(ctx, &events)(); err != nil {
+		return fmt.Errorf("could not open input for events: %w", err)
+	}
 	go func() {
 		for {
-			select {
-			case <-ctx.Done():
-				ok = false
+			e, ok := <-events
+			if !ok {
 				return
-			case e := <-events:
-				closed = e.NewValue
-				v := "closed"
-				if !closed {
-					v = "opened"
-				}
-				r := make([]rest.ClientRequest, len(destinations))
-				for i, d := range destinations {
-					r[i] = c.Request(context.Background(), d, http.MethodPut).StringBody(v)
-				}
-				rest.GoSendAll(http.StatusOK, log.Root.Warning, r...)
 			}
+			closed = e.NewValue
+			v := "closed"
+			if !closed {
+				v = "opened"
+			}
+			r := make([]rest.ClientRequest, len(destinations))
+			for i, d := range destinations {
+				r[i] = c.Request(context.Background(), d, http.MethodPut).JSONBody(&v)
+			}
+			rest.GoSendAll(http.StatusSeeOther, log.Root.Warning, r...)
 		}
 	}()
 	return nil

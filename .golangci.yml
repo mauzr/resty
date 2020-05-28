@@ -47,3 +47,7 @@ issues:
   - EXC0005
   - EXC0009
   - EXC0010
+linters-settings:
+  nolintlint:
+    require-explanation: true
+    require-specific: true
