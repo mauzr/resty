@@ -81,7 +81,7 @@ func ExposeSend(m rest.Mux, c rest.Client, path string, receivers []string, chan
 		for _, receiver := range receivers {
 			reqs = append(reqs, c.Request(context.Background(), receiver, http.MethodPut).JSONBody(&current))
 		}
-		rest.GoSendAll(http.StatusOK, log.Root.Warning, reqs...)
+		rest.GoSendAll(http.StatusSeeOther, log.Root.Warning, reqs...)
 		mutex.Unlock()
 	})
 }

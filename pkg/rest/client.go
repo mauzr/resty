@@ -217,7 +217,9 @@ func SendAll(okCode int, clients ...ClientRequest) error {
 		err := make(chan error)
 		errs = append(errs, err)
 		go func(c ClientRequest, err chan error) {
-			err <- c.Send(okCode).Check()
+			if e := c.Send(okCode).Check(); e != nil {
+				err <- e
+			}
 			close(err)
 		}(c, err)
 	}
