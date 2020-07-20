@@ -17,6 +17,7 @@ limitations under the License.
 package rest
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -31,3 +32,6 @@ type HTTPError struct {
 func (h HTTPError) Error() string {
 	return fmt.Sprintf("%v -> %v %v", h.URL, h.StatusCode, h.Text)
 }
+
+// ErrRequest happens when a HTTP request is invalid.
+var ErrRequest = errors.New("invalid request")

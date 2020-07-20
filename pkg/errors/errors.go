@@ -37,6 +37,7 @@ func (m MultiError) Error() string {
 	fmt.Fprintf(buf, "encountered multiple errors:\n")
 	for _, e := range m.Errs {
 		buf.WriteString(e.Error())
+		buf.WriteString("\n")
 	}
 	return buf.String()
 }

@@ -84,7 +84,7 @@ type ClientRequest interface {
 	Header(key string, value ...string) ClientRequest
 
 	// Send a request on its way.
-	Send(okCode int) ClientResponse
+	Send(okCode ...int) ClientResponse
 }
 
 // NewClient creates a new improved http client.
@@ -92,7 +92,8 @@ func NewClient(tls *tls.Config) Client {
 	return &client{
 		&http.Client{
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
+				//return http.ErrUseLastResponse
+				return nil
 			},
 			Transport: &http2.Transport{
 				TLSClientConfig: tls,
@@ -139,7 +140,7 @@ func (c *clientRequest) Header(key string, value ...string) ClientRequest {
 }
 
 // Send a request on its way.
-func (c *clientRequest) Send(okCode int) ClientResponse {
+func (c *clientRequest) Send(okCodes ...int) ClientResponse {
 	request, err := http.NewRequestWithContext(c.ctx, c.method, c.url, c.body)
 	request.Header = c.header
 	if err != nil {
@@ -148,7 +149,14 @@ func (c *clientRequest) Send(okCode int) ClientResponse {
 	cc := &clientResponse{}
 	cc.Response, cc.RequestErr = c.Client.Do(request) //nolint:bodyclose // Will be closed by other chained functions.
 	if cc.RequestErr == nil {
-		if okCode != cc.Response.StatusCode {
+		var codeExpected bool
+		for _, c := range okCodes {
+			if c == cc.Response.StatusCode {
+				codeExpected = true
+				break
+			}
+		}
+		if !codeExpected {
 			if cc.Response.StatusCode == http.StatusMovedPermanently || cc.Response.StatusCode == http.StatusTemporaryRedirect || cc.Response.StatusCode == http.StatusSeeOther {
 				cc.RequestErr = HTTPError{URL: request.URL.String(), StatusCode: cc.Response.StatusCode, Text: fmt.Sprintf("unexpected redirect to %v", cc.Response.Header["Location"])}
 			} else {

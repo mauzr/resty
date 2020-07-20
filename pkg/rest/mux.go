@@ -17,18 +17,32 @@ limitations under the License.
 package rest
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/http/pprof"
 	"net/url"
+	"sort"
 	"strings"
+	"sync"
 
 	"go.eqrx.net/mauzr/pkg/log"
+)
+
+const (
+	landingHeader = `<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>core.eqrx.net front page</title>
+</head>
+<body>
+`
+	landingFooter = `</body>
+</html>
+`
 )
 
 //go:generate esc -o static.go --pkg rest --prefix=../../web/ ../../web/
@@ -50,7 +64,11 @@ type Mux interface {
 }
 
 type mux struct {
-	mux *http.ServeMux
+	mux            *http.ServeMux
+	pages          []string
+	pageMutex      sync.Mutex
+	landing        []byte
+	rootRegistered bool
 }
 
 // Forward a path to some other host.
@@ -128,39 +146,65 @@ func (m *mux) Endpoint(path string, queryHandler func(query *Request)) {
 	})
 }
 
-// Request contains information from a request and how to handle it.
-type Request struct {
-	Ctx                                 context.Context
-	URL                                 url.URL
-	RequestBody                         []byte
-	ResponseBody                        []byte
-	Status                              int
-	RequestErr, InternalErr, GatewayErr error
-	HasArgs                             bool
+// ServeHTTP just calls net/http.ServeMux.ServeHTTP.
+func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !m.rootRegistered {
+		m.Endpoint("/", m.land)
+		m.rootRegistered = true
+	}
+	m.mux.ServeHTTP(w, r)
 }
 
-// ErrRequest happens when a HTTP request is invalid.
-var ErrRequest = errors.New("invalid request")
+func (m *mux) registerPage(pattern string) {
+	m.pageMutex.Lock()
+	m.pages = append(m.pages, pattern)
+	regenerate := m.landing != nil
+	m.pageMutex.Unlock()
+	if regenerate {
+		m.generateLanding()
+	}
+	if pattern == "/" {
+		m.rootRegistered = true
+	}
+}
 
-// Args are parsed from the url into the given struct.
-func (r *Request) Args(target interface{}) error {
-	args := r.URL.Query()
-	buffer := map[string]interface{}{}
-	for key, value := range args {
-		if len(value) > 1 {
-			buffer[key] = value
-		} else {
-			buffer[key] = value[0]
+// Handle just calls net/http.ServeMux.Handle.
+func (m *mux) Handle(pattern string, handler http.Handler) {
+	m.registerPage(pattern)
+	m.mux.Handle(pattern, handler)
+}
+
+// HandleFunc just calls net/http.ServeMux.HandleFunc.
+func (m *mux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+	m.registerPage(pattern)
+	m.mux.HandleFunc(pattern, handler)
+}
+
+func (m *mux) land(r *Request) {
+	if r.URL.Path != "/" {
+		r.Status = http.StatusNotFound
+		r.ResponseBody = []byte("not found")
+		return
+	}
+	if m.landing == nil {
+		m.generateLanding()
+	}
+	r.ResponseBody = m.landing
+}
+
+func (m *mux) generateLanding() {
+	m.pageMutex.Lock()
+	defer m.pageMutex.Unlock()
+	sort.Strings(m.pages)
+	buf := strings.Builder{}
+	buf.WriteString(landingHeader)
+	for _, s := range m.pages {
+		if s != "/" {
+			fmt.Fprintf(&buf, "<a href=\"%s\">%s</a><br>\n", s, s)
 		}
 	}
-	data, err := json.Marshal(buffer)
-	if err != nil {
-		panic(err)
-	}
-	if err := json.Unmarshal(data, target); err != nil {
-		r.RequestErr = fmt.Errorf("%w: %s", ErrRequest, err)
-	}
-	return r.RequestErr
+	buf.WriteString(landingFooter)
+	m.landing = []byte(buf.String())
 }
 
 // NewMux creates a new improves mux.
@@ -172,25 +216,10 @@ func NewMux() Mux {
 	hm.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	hm.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	hm.HandleFunc("/debug/pprof/trace", pprof.Trace)
-	m := &mux{hm}
+	m := &mux{hm, []string{}, sync.Mutex{}, nil, false}
 	m.Endpoint("/health", func(r *Request) {
 		messages := log.Root.RetainedMessages()
 		r.ResponseBody, r.InternalErr = json.Marshal(&messages)
 	})
 	return m
-}
-
-// ServeHTTP just calls net/http.ServeMux.ServeHTTP.
-func (m *mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	m.mux.ServeHTTP(w, r)
-}
-
-// Handle just calls net/http.ServeMux.Handle.
-func (m *mux) Handle(pattern string, handler http.Handler) {
-	m.mux.Handle(pattern, handler)
-}
-
-// HandleFunc just calls net/http.ServeMux.HandleFunc.
-func (m *mux) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
-	m.mux.HandleFunc(pattern, handler)
 }
