@@ -12,12 +12,12 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - name: Download golangci-lint
-      run: curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sudo sh -s -- -b /usr/local/bin v1.26.0
     - name: Download
       run: make download
-    - name: Lint
-      run: make lint
+    - name: Vet
+      uses: golangci/golangci-lint-action@v1
+      with:
+        version: v1.29
     - name: Test
       run: make test
     - name: Benchmark
