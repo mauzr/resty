@@ -27,6 +27,7 @@ func Flasher(duration time.Duration, lower, upper color.RGBW) func(LoopSetting) 
 	if lower == nil || upper == nil {
 		panic("lower or upper not set")
 	}
+
 	return func(l LoopSetting) {
 		stepLength := duration.Seconds() * float64(l.Framerate)
 		for i := range l.Start {
@@ -39,7 +40,7 @@ func Flasher(duration time.Duration, lower, upper color.RGBW) func(LoopSetting) 
 			}
 			steps := make([]color.RGBW, int(stepLength))
 			for i := range steps {
-				if float64(i)/float64(len(steps)) < 0.75 {
+				if float64(i)/float64(len(steps)) < 0.75 { //nolint:gomnd // Show upper 75% of the time.
 					steps[i] = upper
 				} else {
 					steps[i] = lower

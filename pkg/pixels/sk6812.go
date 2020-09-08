@@ -24,7 +24,6 @@ import (
 	"os"
 	"regexp"
 	"time"
-
 	"unsafe"
 
 	"go.eqrx.net/mauzr/pkg/file"
@@ -45,10 +44,12 @@ type operation struct {
 	pad         uint16 //nolint:structcheck // Keep the name for future use.
 }
 
+//nolint:gomnd // Hardware interfacing.
 func channelToByte(channel float64) uint8 {
 	if channel < 0.0 || channel > 1.0 {
 		panic(fmt.Sprintf("illegal channel value: %f", channel))
 	}
+
 	return uint8(255.0 * channel)
 }
 
@@ -61,6 +62,7 @@ func translate(colors []color.RGBW, translated []byte, lut [][]byte, translation
 	}
 }
 
+//nolint:gomnd // Hardware interfacing.
 func createLut() ([][]byte, int) {
 	translationFactor := 8
 	lut := make([][]byte, 256)
@@ -77,6 +79,7 @@ func createLut() ([][]byte, int) {
 		lut[dataByte] = make([]byte, translationFactor)
 		binary.LittleEndian.PutUint64(lut[dataByte], translation)
 	}
+
 	return lut, translationFactor
 }
 
@@ -101,6 +104,7 @@ func determineSpeed() uint32 {
 	if err := scanner.Err(); err != nil {
 		panic(err)
 	}
+	//nolint:gomnd // Hardware interfacing.
 	speed, ok := map[string]uint32{
 		"c03112": 19000000,
 		"a22082": 6400000,
@@ -109,11 +113,18 @@ func determineSpeed() uint32 {
 	if !ok {
 		panic("speed not found")
 	}
+
 	return speed
 }
 
 // New creates a new manager the outputs pixel data from a strip input to the actual pixels.
 func New(colors []color.RGBW, sources []Source, path string, framerate int) <-chan error {
+	for i := range colors {
+		if colors[i] == nil {
+			panic(fmt.Sprintf("colors slice contains nil: %v (first at %v)", colors, i))
+		}
+	}
+	fmt.Printf("%v \n", colors)
 	if framerate <= 0 {
 		panic("invalid framerate")
 	}
@@ -137,6 +148,7 @@ func New(colors []color.RGBW, sources []Source, path string, framerate int) <-ch
 		f := file.New(path)
 		if err := f.Open(os.O_RDWR|os.O_SYNC, os.ModeDevice)(); err != nil {
 			errors <- err
+
 			return
 		}
 		defer func() {
@@ -145,7 +157,7 @@ func New(colors []color.RGBW, sources []Source, path string, framerate int) <-ch
 			}
 		}()
 
-		translated := make([]byte, len(colors)*translationFactor*4)
+		translated := make([]byte, len(colors)*translationFactor*4) //nolint:gomnd // Serilization takes up 4 times more space.
 		arg := operation{
 			txBuf:   uint64(uintptr(unsafe.Pointer(&translated[0]))),
 			len:     uint32(len(translated)),
@@ -160,6 +172,7 @@ func New(colors []color.RGBW, sources []Source, path string, framerate int) <-ch
 			}
 		}
 	}()
+
 	return errors
 }
 
@@ -173,5 +186,6 @@ func handleSources(ticker <-chan time.Time, sources []Source) bool {
 			allClosed = false
 		}
 	}
+
 	return allClosed
 }

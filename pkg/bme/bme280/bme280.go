@@ -69,6 +69,7 @@ func (m *Model) Calibrations() Calibrations {
 }
 
 // Reset resets the BME280 behind the given address and fetches the calibration.
+//nolint:gomnd // Hardware interfacing.
 func (m *Model) Reset() error {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf on how this works
 	var data [36]byte
@@ -91,10 +92,12 @@ func (m *Model) Reset() error {
 		PressureCalibration{i.P1, i.P2, i.P3, i.P4, i.P5, i.P6, i.P7, i.P8, i.P9},
 		TemperatureCalibration{i.T1, i.T2, i.T3},
 	}
+
 	return nil
 }
 
 // Measure creates a measurement with the given BME280 behind the given address.
+//nolint:gomnd // Hardware interfacing.
 func (m *Model) Measure() (common.Measurement, error) {
 	var reading [8]byte
 	err := errors.NewBatch(m.device.Open,
@@ -103,7 +106,6 @@ func (m *Model) Measure() (common.Measurement, error) {
 		m.device.Write(0xf4, 0x25),
 		m.device.WriteRead([]byte{0xf7}, reading[:]),
 	).Always(m.device.Close).Execute("measuring with bme280")
-
 	if err != nil {
 		return common.Measurement{}, err
 	}
@@ -119,5 +121,6 @@ func (m *Model) Measure() (common.Measurement, error) {
 		Temperature: temperature,
 		Timestamp:   time.Now(),
 	}
+
 	return measurement, nil
 }

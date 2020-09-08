@@ -24,6 +24,7 @@ import (
 func FanIn(errors ...<-chan error) <-chan error {
 	merged := make(chan error)
 	FanInto(merged, errors...)
+
 	return merged
 }
 
@@ -40,6 +41,7 @@ func FanInto(merged chan<- error, errors ...<-chan error) {
 				} else {
 					merged <- ErrChannelClosed
 					wg.Done()
+
 					return
 				}
 			}

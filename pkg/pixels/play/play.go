@@ -26,13 +26,19 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/sources"
 )
 
+const (
+	defaultPartDuration          = 3 * time.Second
+	transitionDuration           = 3 * time.Second
+	minimumAlertLightLevelFactor = 0.1
+)
+
 // DefaultParts creates a map with the default part setup.
 func DefaultParts() map[string]func(sources.LoopSetting) {
 	return map[string]func(sources.LoopSetting){
 		"off":     sources.Static(color.Off()),
 		"bright":  sources.Static(color.Bright()),
-		"alert":   sources.FadeLoop(3*time.Second, color.Off().MixWith(0.1, color.Red()), color.Red()),
-		"rainbow": sources.Rainbow(3 * time.Second),
+		"alert":   sources.FadeLoop(defaultPartDuration, color.Off().MixWith(minimumAlertLightLevelFactor, color.Red()), color.Red()),
+		"rainbow": sources.Rainbow(defaultPartDuration),
 	}
 }
 
@@ -55,8 +61,10 @@ func handleRequest(parts map[string]func(sources.LoopSetting), request Request) 
 
 	if _, ok := parts[request.Part]; !ok {
 		request.Response <- ErrUnknownPart
+
 		return ""
 	}
+
 	return request.Part
 }
 
@@ -80,7 +88,7 @@ func managePart(parts map[string]func(sources.LoopSetting), currentPart string, 
 	l := sources.LoopSetting{Tick: loopTick, Done: loopDone, Destination: manager.Destination(), Framerate: manager.Framerate(), Start: desired}
 	parts[currentPart](l)
 	t := sources.TransitionSetting{Tick: transitionTick, Done: transitionDone, Destination: manager.Destination(), Desired: desired, Framerate: manager.Framerate()}
-	sources.Fader(2 * time.Second)(t)
+	sources.Fader(transitionDuration)(t)
 
 	for ok := true; ok; {
 		select {
@@ -139,6 +147,6 @@ func New(parts map[string]func(sources.LoopSetting), manager pixels.SourceManage
 			Desired:     shutdownDesired,
 			Framerate:   manager.Framerate(),
 		}
-		sources.Fader(3 * time.Second)(t)
+		sources.Fader(transitionDuration)(t)
 	}()
 }

@@ -61,6 +61,7 @@ func Fader(duration time.Duration) func(TransitionSetting) {
 				for i := range t.Destination {
 					destinationChannels := (*t.Destination[i]).Channels()
 					stepChannels := steps[i].Channels()
+					//nolint:gomnd // 0.0 is minimum, 1.0 is maximum
 					c := color.NewRGBW(
 						math.Max(0.0, math.Min(destinationChannels[0]+stepChannels[0], 1.0)),
 						math.Max(0.0, math.Min(destinationChannels[1]+stepChannels[1], 1.0)),

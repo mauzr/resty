@@ -17,6 +17,10 @@ limitations under the License.
 // Package color contains color types.
 package color
 
+const (
+	logicalColorsDampendingFactor = 0.1
+)
+
 // Yellow returns the the color yellow.
 func Yellow() RGBW {
 	return &rgbw{[4]float64{1.0, 0.9, 0, 0}}
@@ -54,15 +58,15 @@ func Unmanaged() RGBW {
 
 // Error indicates that something is wrong.
 func Error() RGBW {
-	return Off().MixWith(0.1, Red())
+	return Off().MixWith(logicalColorsDampendingFactor, Red())
 }
 
 // Warning indicates that something requires attention.
 func Warning() RGBW {
-	return Off().MixWith(0.1, Yellow())
+	return Off().MixWith(logicalColorsDampendingFactor, Yellow())
 }
 
 // Good indicated that everything is fine.
 func Good() RGBW {
-	return Off().MixWith(0.1, Green())
+	return Off().MixWith(logicalColorsDampendingFactor, Green())
 }

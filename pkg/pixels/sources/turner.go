@@ -22,6 +22,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
+//nolint:gomnd // Lots fractions.
 func applyTurner(theme color.RGBW, i int, destination []color.RGBW) {
 	for j := range destination {
 		destination[j] = color.Off()
@@ -35,6 +36,7 @@ func applyTurner(theme color.RGBW, i int, destination []color.RGBW) {
 }
 
 // Turner puts a rotating light on circular positioned pixels.
+//nolint:gomnd // Lots fractions.
 func Turner(theme color.RGBW, interval time.Duration) func(LoopSetting) {
 	return func(l LoopSetting) {
 		applyTurner(theme, 0, l.Start)

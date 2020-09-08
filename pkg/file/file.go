@@ -71,17 +71,19 @@ func NewFromFd(fd uintptr, name string) File {
 	if f.handle == nil {
 		panic("passed fd is invalid")
 	}
+
 	return &f
 }
 
 // Open the file.
 func (f *file) Open(flags int, mask os.FileMode) func() error {
 	return func() error {
-		h, err := os.OpenFile(f.path, flags, mask)
+		h, err := os.OpenFile(f.path, flags, mask) //nolint:gosec // Yes, file name is a variable.
 		if err != nil {
 			return fmt.Errorf("could not not open file %v with flags %v and mask %v: %w", f.path, flags, mask, err)
 		}
 		f.handle = h
+
 		return nil
 	}
 }
@@ -93,6 +95,7 @@ func (f *file) Close() error {
 	if err != nil {
 		return fmt.Errorf("could not not close file %v: %w", f.path, err)
 	}
+
 	return nil
 }
 
@@ -103,6 +106,7 @@ func (f *file) Write(data []byte) func() error {
 		if err != nil {
 			return fmt.Errorf("could not write %v to file %v: %w", data, f.path, err)
 		}
+
 		return nil
 	}
 }
@@ -114,6 +118,7 @@ func (f *file) WriteBinary(order binary.ByteOrder, data interface{}) func() erro
 		if err != nil {
 			return fmt.Errorf("could not binary write %v to file %v: %w", data, f.path, err)
 		}
+
 		return nil
 	}
 }
@@ -125,6 +130,7 @@ func (f *file) WriteString(data string) func() error {
 		if err != nil {
 			return fmt.Errorf("could not write %v to file %v: %w", data, f.path, err)
 		}
+
 		return nil
 	}
 }
@@ -136,6 +142,7 @@ func (f *file) SeekTo(offset int64) func() error {
 		if err != nil {
 			return fmt.Errorf("could not seek to %v in file %v: %w", offset, f.path, err)
 		}
+
 		return nil
 	}
 }
@@ -147,6 +154,7 @@ func (f *file) Read(destination []byte) func() error {
 		if err != nil {
 			return fmt.Errorf("could not read #%v from file %v: %w", len(destination), f.path, err)
 		}
+
 		return nil
 	}
 }
@@ -161,6 +169,7 @@ func (f *file) ReadString(destination *string, length int) func() error {
 			return fmt.Errorf("could not read #%v from file %v: %w", length, f.path, err)
 		}
 		*destination = string(buf)
+
 		return nil
 	}
 }
@@ -172,6 +181,7 @@ func (f *file) ReadBinary(order binary.ByteOrder, data interface{}) func() error
 		if err != nil {
 			return fmt.Errorf("could not binary read %v from file %v: %w", data, f.path, err)
 		}
+
 		return nil
 	}
 }

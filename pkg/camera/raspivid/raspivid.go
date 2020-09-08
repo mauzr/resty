@@ -74,6 +74,7 @@ func (c Configuration) arguments() ([]string, error) {
 	for _, ex := range []string{"off", "auto", "night", "nightpreview", "backlight", "spotlight", "sports", "snow", "beach", "verylong", "fixedfps", "antishake", "fireworks"} {
 		if ex == c.Exposure {
 			exvalid = true
+
 			break
 		}
 	}
@@ -89,6 +90,7 @@ func (c Configuration) arguments() ([]string, error) {
 	if c.Flip[1] {
 		args = append(args, "--vflip")
 	}
+
 	return args, nil
 }
 
@@ -103,6 +105,7 @@ func startCmd(args []string) (cmd *exec.Cmd, stdout, stderr io.Reader, err error
 		return
 	}
 	err = cmd.Start()
+
 	return
 }
 
@@ -111,6 +114,7 @@ func stopCmd(cmd *exec.Cmd) (err error) {
 	if err != nil {
 		err = cmd.Wait()
 	}
+
 	return err
 }
 
@@ -126,6 +130,7 @@ func handleStreaming(requests <-chan Request, readAmount int, dataBuffer []byte,
 	case data <- Data{dataBuffer[:readAmount], nil}:
 		hasNextRequest = true
 	}
+
 	return
 }
 
@@ -146,8 +151,10 @@ func handleStreamingStart(request Request, requests <-chan Request, readAmount i
 	} else {
 		request.Response <- readError
 	}
+
 	return
 }
+
 func handleCommand(stdout, stderr io.Reader, request *Request, requests <-chan Request, data chan<- Data) *Request {
 	for {
 		dataBuffer := make([]byte, 4096)
@@ -179,6 +186,7 @@ func handleCommand(stdout, stderr io.Reader, request *Request, requests <-chan R
 			}
 		case err != nil:
 			data <- Data{nil, fmt.Errorf("raspivid failed: %w", err)}
+
 			return nil
 		}
 	}
@@ -208,12 +216,14 @@ func New(requests <-chan Request) <-chan Data {
 			if err != nil {
 				request.Response <- err
 				close(request.Response)
+
 				continue
 			}
 			cmd, stdout, stderr, err := startCmd(args)
 			if err != nil {
 				request.Response <- err
 				close(request.Response)
+
 				continue
 			}
 			request = handleCommand(stdout, stderr, request, requests, data)
@@ -222,6 +232,7 @@ func New(requests <-chan Request) <-chan Data {
 			}
 		}
 	}()
+
 	return data
 }
 

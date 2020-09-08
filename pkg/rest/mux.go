@@ -87,6 +87,7 @@ func (m *mux) Forward(client Client, path, host, redirect string) {
 		if h.Get("Location") != "" {
 			h.Set("Location", redirect)
 		}
+
 		return nil
 	}
 
@@ -184,6 +185,7 @@ func (m *mux) land(r *Request) {
 	if r.URL.Path != "/" {
 		r.Status = http.StatusNotFound
 		r.ResponseBody = []byte("not found")
+
 		return
 	}
 	if m.landing == nil {
@@ -221,5 +223,6 @@ func NewMux() Mux {
 		messages := log.Root.RetainedMessages()
 		r.ResponseBody, r.InternalErr = json.Marshal(&messages)
 	})
+
 	return m
 }

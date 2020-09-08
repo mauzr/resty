@@ -15,6 +15,11 @@ import (
 	"go.eqrx.net/mauzr/pkg/rest"
 )
 
+const (
+	readHeaderTimeout = 3 * time.Second
+	idleTimeout       = 24 * time.Hour
+)
+
 func (c *Client) serverTLSConfig(name string, pkis ...string) (*tls.Config, error) {
 	cas := x509.NewCertPool()
 	tlsConfig := &tls.Config{
@@ -36,6 +41,7 @@ func (c *Client) serverTLSConfig(name string, pkis ...string) (*tls.Config, erro
 	if err == nil && tlsConfig.Certificates[0].PrivateKey == nil {
 		panic("nope")
 	}
+
 	return tlsConfig, err
 }
 
@@ -47,7 +53,9 @@ func (c *Client) RESTServer(ctx context.Context, handler http.Handler, name stri
 		tlsConfig, err := c.serverTLSConfig(name, pkis...)
 		if err != nil {
 			errOut <- err
+
 			close(errOut)
+
 			return
 		}
 
@@ -55,6 +63,7 @@ func (c *Client) RESTServer(ctx context.Context, handler http.Handler, name stri
 		if err != nil {
 			errOut <- err
 			close(errOut)
+
 			return
 		}
 		log.Root.Debug("found %v as addrs for %v", addrs, name)
@@ -68,8 +77,8 @@ func (c *Client) RESTServer(ctx context.Context, handler http.Handler, name stri
 			server := &http.Server{
 				Addr:              net.JoinHostPort(addr, "443"),
 				TLSConfig:         tlsConfig,
-				ReadHeaderTimeout: 3 * time.Second,
-				IdleTimeout:       24 * time.Hour,
+				ReadHeaderTimeout: readHeaderTimeout,
+				IdleTimeout:       idleTimeout,
 				Handler:           handler,
 			}
 			err := make(chan error)
@@ -95,6 +104,7 @@ func (c *Client) RESTServer(ctx context.Context, handler http.Handler, name stri
 		errs = append(errs, shutdownErrors)
 		errors.FanInto(errOut, errs...)
 	}()
+
 	return errOut
 }
 
@@ -111,5 +121,6 @@ func (c *Client) RESTClient(name, pki string) (rest.Client, error) {
 	if err == nil && t.Certificates[0].PrivateKey == nil {
 		panic("nope")
 	}
+
 	return cc, err
 }

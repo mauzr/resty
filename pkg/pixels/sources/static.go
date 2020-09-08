@@ -25,6 +25,7 @@ func Static(target color.RGBW) func(LoopSetting) {
 	if target == nil {
 		panic("target not set")
 	}
+
 	return func(l LoopSetting) {
 		for i := range l.Start {
 			l.Start[i] = target

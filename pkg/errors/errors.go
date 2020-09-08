@@ -39,6 +39,7 @@ func (m MultiError) Error() string {
 		buf.WriteString(e.Error())
 		buf.WriteString("\n")
 	}
+
 	return buf.String()
 }
 

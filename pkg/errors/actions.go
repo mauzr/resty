@@ -36,6 +36,7 @@ func (s StepError) Unwrap() error {
 	if s.Previous != nil {
 		return s.Previous
 	}
+
 	return s.Cause
 }
 
@@ -50,12 +51,14 @@ type Step struct {
 // OnError executes the given actions if the current step execution fails.
 func (s *Step) OnError(actions ...func() error) *Step {
 	s.onError = &Step{s.start, actions, nil, nil}
+
 	return s.onError
 }
 
 // OnSuccess executes the given actions if the current step execution succeeds.
 func (s *Step) OnSuccess(actions ...func() error) *Step {
 	s.onSuccess = &Step{s.start, actions, nil, nil}
+
 	return s.onSuccess
 }
 
@@ -63,6 +66,7 @@ func (s *Step) OnSuccess(actions ...func() error) *Step {
 func (s *Step) Always(actions ...func() error) *Step {
 	s.onSuccess = &Step{s.start, actions, nil, nil}
 	s.onError = s.onSuccess
+
 	return s.onSuccess
 }
 
@@ -88,6 +92,7 @@ func (s *Step) Execute(message string) error {
 	if err != nil {
 		return fmt.Errorf("failed to %s: %w", message, err)
 	}
+
 	return nil
 }
 
@@ -95,6 +100,7 @@ func (s *Step) Execute(message string) error {
 func NewBatch(actions ...func() error) *Step {
 	s := &Step{nil, actions, nil, nil}
 	s.start = s
+
 	return s
 }
 
@@ -102,6 +108,7 @@ func NewBatch(actions ...func() error) *Step {
 func BatchSleepAction(duration time.Duration) func() error {
 	return func() error {
 		time.Sleep(duration)
+
 		return nil
 	}
 }
@@ -110,6 +117,7 @@ func BatchSleepAction(duration time.Duration) func() error {
 func BatchNoError(real func()) func() error {
 	return func() error {
 		real()
+
 		return nil
 	}
 }

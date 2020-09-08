@@ -49,6 +49,7 @@ const (
 </body>
 </html>
 `
+	updateTimeout = 3 * time.Second
 )
 
 // ExposeSend will listen for part change requests and gives out the current status.
@@ -64,6 +65,7 @@ func ExposeSend(m rest.Mux, c rest.Client, path string, receivers []string, chan
 	m.Endpoint(path, func(query *rest.Request) {
 		if !query.HasArgs {
 			query.ResponseBody = []byte(PartChangeForm)
+
 			return
 		}
 		args := struct {
@@ -87,7 +89,7 @@ func ExposeSend(m rest.Mux, c rest.Client, path string, receivers []string, chan
 }
 
 func updateAll(query *rest.Request, stance string, changers []chan<- Request) {
-	ctx, cancel := context.WithTimeout(query.Ctx, 3*time.Second)
+	ctx, cancel := context.WithTimeout(query.Ctx, updateTimeout)
 	defer cancel()
 	for _, changer := range changers {
 		response := make(chan error, 1)
@@ -95,16 +97,19 @@ func updateAll(query *rest.Request, stance string, changers []chan<- Request) {
 		select {
 		case <-ctx.Done():
 			query.InternalErr = ctx.Err()
+
 			return
 		case changer <- req:
 		}
 		select {
 		case <-ctx.Done():
 			query.InternalErr = ctx.Err()
+
 			return
 		case err := <-response:
 			if err != nil {
 				query.RequestErr = err
+
 				return
 			}
 		}

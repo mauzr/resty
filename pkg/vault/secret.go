@@ -32,6 +32,7 @@ func (c *Client) GetSecret(backend, path string, destination interface{}) error 
 		} `json:"data"`
 	}{}
 	response.Data.Data = destination
+
 	return c.http.Request(context.Background(), c.host+backend+"data/"+path, http.MethodGet).Header("X-Vault-Token", c.token).Send(http.StatusOK).JSONBody(&response).Check()
 }
 
@@ -43,5 +44,6 @@ func (c *Client) UpdateSecret(backend, path string, source interface{}) error {
 	request := struct {
 		Data interface{} `json:"data"`
 	}{source}
+
 	return c.http.Request(context.Background(), c.host+backend+"data/"+path, http.MethodPost).JSONBody(&request).Header("X-Vault-Token", c.token).Send(http.StatusOK).Check()
 }

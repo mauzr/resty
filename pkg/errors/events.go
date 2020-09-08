@@ -36,10 +36,12 @@ func OnClose(cb func(), in <-chan error) <-chan error {
 			} else {
 				cb()
 				close(out)
+
 				return
 			}
 		}
 	}()
+
 	return out
 }
 
@@ -63,10 +65,12 @@ func OnFirstError(cb func(error), in <-chan error) <-chan error {
 				out <- err
 			} else {
 				close(out)
+
 				return
 			}
 		}
 	}()
+
 	return out
 }
 
@@ -78,6 +82,7 @@ func WrapErrorChan(name string, in <-chan error) <-chan error {
 			err, ok := <-in
 			if !ok {
 				close(out)
+
 				return
 			}
 			if err == nil {
@@ -86,5 +91,6 @@ func WrapErrorChan(name string, in <-chan error) <-chan error {
 			out <- fmt.Errorf("%s: %w", name, err)
 		}
 	}()
+
 	return out
 }

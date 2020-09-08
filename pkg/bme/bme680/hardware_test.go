@@ -26,7 +26,7 @@ import (
 	"go.eqrx.net/mauzr/pkg/i2c"
 )
 
-//MeasurementMock fakes an BME680 device behind an I2C bus.
+// MeasurementMock fakes an BME680 device behind an I2C bus.
 type MeasurementMock []byte
 
 var (
@@ -71,6 +71,7 @@ func (m MeasurementMock) WriteRead(source []byte, destination []byte) func() err
 			panic(fmt.Sprintf("Expected i2c.RegisterAddress to have length 1, was %v", len(source)))
 		}
 		copy(destination, m[source[0]:])
+
 		return nil
 	}
 }
@@ -97,6 +98,7 @@ func setupMeasurementTesting() common.Measurement {
 	address := uint16(0)
 	i2c.New = func(bus string, address uint16) i2c.Device {
 		measureMock[0x1d] |= 0x80
+
 		return measureMock
 	}
 	model := bme680.New(bus, address)
@@ -110,6 +112,7 @@ func setupMeasurementTesting() common.Measurement {
 	if err != nil {
 		panic(err)
 	}
+
 	return m
 }
 

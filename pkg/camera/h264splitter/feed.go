@@ -60,6 +60,7 @@ func New(source <-chan raspivid.Data) <-chan Data {
 			}
 			if data.Err != nil {
 				feed <- Data{nil, data.Err}
+
 				return
 			}
 			_, _ = workBuffer.Write(data.Data)
@@ -69,6 +70,7 @@ func New(source <-chan raspivid.Data) <-chan Data {
 				ready, err := processWorkBuffer(frameBuffer, workBuffer, frameSeparator)
 				if err != nil {
 					feed <- Data{nil, fmt.Errorf("h264splitter: %w", err)}
+
 					return
 				}
 				if ready {
@@ -78,6 +80,7 @@ func New(source <-chan raspivid.Data) <-chan Data {
 			}
 		}
 	}()
+
 	return feed
 }
 
@@ -95,5 +98,6 @@ func processWorkBuffer(frameBuffer, workBuffer *bytes.Buffer, frameSeparator []b
 	default:
 		_, err = io.CopyN(frameBuffer, workBuffer, int64(separatorIndex))
 	}
+
 	return
 }

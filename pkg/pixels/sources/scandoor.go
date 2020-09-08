@@ -23,9 +23,13 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
+const (
+	pixelsPerDoor = 11
+)
+
 func scanDoorLUT(lower, upper color.RGBW, speed time.Duration, framerate int) [][11]color.RGBW {
 	destinationPositions := [11]float64{0, 1 / 4, 2 / 4, 3 / 4, 1, 1, 1, 3 / 4, 2 / 4, 1 / 4, 0}
-	lut := make([][11]color.RGBW, int(speed.Seconds()*float64(framerate/2)))
+	lut := make([][11]color.RGBW, int(speed.Seconds()*float64(framerate/2))) //nolint:gomnd // Halving.
 	for i := range lut {
 		for position := range lut[i] {
 			relPosition := float64(position) / float64(len(lut[i]))
@@ -33,6 +37,7 @@ func scanDoorLUT(lower, upper color.RGBW, speed time.Duration, framerate int) []
 			lut[i][position] = lower.MixWith(distance, upper)
 		}
 	}
+
 	return lut
 }
 
@@ -41,6 +46,7 @@ func ScanDoor(theme color.RGBW, speed time.Duration) func(LoopSetting) {
 	if theme == nil {
 		panic("theme not set")
 	}
+
 	return func(l LoopSetting) {
 		lut := scanDoorLUT(color.Off(), theme, speed, l.Framerate)
 
@@ -53,7 +59,7 @@ func ScanDoor(theme color.RGBW, speed time.Duration) func(LoopSetting) {
 				panic("zero length destination")
 			}
 
-			if len(l.Destination) != 11 {
+			if len(l.Destination) != pixelsPerDoor {
 				panic("strip length must be 11")
 			}
 			position := 0

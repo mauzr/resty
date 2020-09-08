@@ -53,7 +53,7 @@ func FadeLoop(duration time.Duration, lower, upper color.RGBW) func(LoopSetting)
 }
 
 func handleFadeLoopStep(duration time.Duration, done <-chan interface{}, t TransitionSetting, l LoopSetting) {
-	go Fader(duration / 2)(t)
+	go Fader(duration / 2)(t) //nolint:gomnd // Halving stuff.
 	for ok := true; ok; {
 		_, ok = <-done
 		l.Done <- nil

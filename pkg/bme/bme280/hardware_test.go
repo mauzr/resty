@@ -62,6 +62,7 @@ func (m MeasurementMock) WriteRead(source []byte, destination []byte) func() err
 			panic(fmt.Sprintf("Expected i2c.RegisterAddress to have length 1, was %v", len(source)))
 		}
 		copy(destination, m[source[0]+16*8:])
+
 		return nil
 	}
 }

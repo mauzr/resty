@@ -32,9 +32,11 @@ func TokenLogin(token string) func(*Client) error {
 		err := c.http.Request(context.Background(), c.host+"auth/token/lookup-self", http.MethodGet).Header("X-Vault-Token", c.token).Send(http.StatusOK).JSONBody(&response).Check()
 		if err != nil {
 			c.token = ""
+
 			return err
 		}
 		c.expiry = response.ExpireTime
+
 		return nil
 	}
 }
@@ -59,6 +61,7 @@ func AppRoleLogin(role, secret string) func(*Client) error {
 
 		c.expiry = time.Now().Add(time.Duration(response.Auth.Duration) * time.Second)
 		c.token = response.Auth.Token
+
 		return nil
 	}
 }

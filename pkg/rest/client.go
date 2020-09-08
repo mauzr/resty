@@ -92,7 +92,7 @@ func NewClient(tls *tls.Config) Client {
 	return &client{
 		&http.Client{
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				//return http.ErrUseLastResponse
+				// return http.ErrUseLastResponse
 				return nil
 			},
 			Transport: &http2.Transport{
@@ -121,6 +121,7 @@ func (c *clientRequest) JSONBody(data interface{}) ClientRequest {
 	if err := json.NewEncoder(c.body).Encode(data); err != nil {
 		panic(err)
 	}
+
 	return c
 }
 
@@ -130,12 +131,14 @@ func (c *clientRequest) StringBody(data string) ClientRequest {
 		panic("body already set")
 	}
 	c.body.Write([]byte(data))
+
 	return c
 }
 
 // Header adds a header to the request.
 func (c *clientRequest) Header(key string, value ...string) ClientRequest {
 	c.header[key] = value
+
 	return c
 }
 
@@ -148,29 +151,32 @@ func (c *clientRequest) Send(okCodes ...int) ClientResponse {
 	}
 	cc := &clientResponse{}
 	cc.Response, cc.RequestErr = c.Client.Do(request) //nolint:bodyclose // Will be closed by other chained functions.
-	if cc.RequestErr == nil {
-		var codeExpected bool
-		for _, c := range okCodes {
-			if c == cc.Response.StatusCode {
-				codeExpected = true
-				break
-			}
-		}
-		if !codeExpected {
-			if cc.Response.StatusCode == http.StatusMovedPermanently || cc.Response.StatusCode == http.StatusTemporaryRedirect || cc.Response.StatusCode == http.StatusSeeOther {
-				cc.RequestErr = HTTPError{URL: request.URL.String(), StatusCode: cc.Response.StatusCode, Text: fmt.Sprintf("unexpected redirect to %v", cc.Response.Header["Location"])}
-			} else {
-				data, err := ioutil.ReadAll(cc.Response.Body)
-				if err != nil {
-					panic(err)
-				}
-				cc.RequestErr = HTTPError{URL: request.URL.String(), StatusCode: cc.Response.StatusCode, Text: string(data)}
-			}
-		}
-	}
 	if cc.Response == nil && cc.RequestErr == nil {
 		panic("invalid state")
 	}
+	if cc.RequestErr != nil {
+		return cc
+	}
+	var codeExpected bool
+	for _, c := range okCodes {
+		if c == cc.Response.StatusCode {
+			codeExpected = true
+
+			break
+		}
+	}
+	if !codeExpected {
+		if cc.Response.StatusCode == http.StatusMovedPermanently || cc.Response.StatusCode == http.StatusTemporaryRedirect || cc.Response.StatusCode == http.StatusSeeOther {
+			cc.RequestErr = HTTPError{URL: request.URL.String(), StatusCode: cc.Response.StatusCode, Text: fmt.Sprintf("unexpected redirect to %v", cc.Response.Header["Location"])}
+		} else {
+			data, err := ioutil.ReadAll(cc.Response.Body)
+			if err != nil {
+				panic(err)
+			}
+			cc.RequestErr = HTTPError{URL: request.URL.String(), StatusCode: cc.Response.StatusCode, Text: string(data)}
+		}
+	}
+
 	return cc
 }
 
@@ -179,6 +185,7 @@ func (c *clientResponse) JSONBody(data interface{}) ClientResponse {
 	if c.RequestErr == nil {
 		c.DataErr = json.NewDecoder(c.Response.Body).Decode(data)
 	}
+
 	return c
 }
 
@@ -189,6 +196,7 @@ func (c *clientResponse) ByteSliceBody(data *[]byte) ClientResponse {
 		*data = d
 		c.DataErr = err
 	}
+
 	return c
 }
 
@@ -201,6 +209,7 @@ func (c *clientResponse) StringBody(dst *string) ClientResponse {
 		}
 		c.DataErr = err
 	}
+
 	return c
 }
 
@@ -215,6 +224,7 @@ func (c *clientResponse) Check() error {
 	if c.DataErr != nil {
 		return c.DataErr
 	}
+
 	return nil
 }
 
@@ -231,6 +241,7 @@ func SendAll(okCode int, clients ...ClientRequest) error {
 			close(err)
 		}(c, err)
 	}
+
 	return errors.Aggregate(errors.FanIn(errs...), nil)
 }
 

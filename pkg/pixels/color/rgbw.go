@@ -42,21 +42,25 @@ func NewRGBW(red, green, blue, white float64) RGBW {
 
 // RandomRGBW for testing.
 func RandomRGBW() RGBW {
-	return &rgbw{[4]float64{rand.Float64(), rand.Float64(), rand.Float64(), rand.Float64()}}
+	return &rgbw{[4]float64{rand.Float64(), rand.Float64(), rand.Float64(), rand.Float64()}} //nolint:gosec // This does not need crypto rand.
 }
 
 func (r rgbw) Red() float64 {
 	return r.channels[0]
 }
+
 func (r rgbw) Green() float64 {
 	return r.channels[1]
 }
+
 func (r rgbw) Blue() float64 {
 	return r.channels[2]
 }
+
 func (r rgbw) White() float64 {
 	return r.channels[3]
 }
+
 func (r rgbw) Channels() [4]float64 {
 	return r.channels
 }
@@ -66,6 +70,7 @@ func mixChannels(self, amount, other float64) float64 {
 	if self < other {
 		return self + (other-self)*amount
 	}
+
 	return other + (self-other)*(1-amount)
 }
 
@@ -74,6 +79,7 @@ func (r rgbw) MixWith(amount float64, other RGBW) RGBW {
 	if amount < 0.0 || amount > 1.0 {
 		panic(fmt.Sprintf("illegal amount: %v", amount))
 	}
+
 	return NewRGBW(
 		mixChannels(r.channels[0], amount, other.Red()),
 		mixChannels(r.channels[1], amount, other.Green()),

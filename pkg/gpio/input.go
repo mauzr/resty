@@ -74,6 +74,7 @@ func (i *input) Events(ctx context.Context, eventsDestination *<-chan InputEvent
 	*eventsDestination = events
 
 	ioctlRequest := file.IoctlRequestNumber(true, true, unsafe.Sizeof(r), 0xb4, 4)
+
 	return func() error {
 		if err := i.chip.file.IoctlPointerArgument(ioctlRequest, unsafe.Pointer(&r))(); err != nil {
 			return err
@@ -103,6 +104,7 @@ func (i *input) Events(ctx context.Context, eventsDestination *<-chan InputEvent
 					if err := f.Close(); err != nil {
 						panic(err)
 					}
+
 					return
 				}
 			}
@@ -147,6 +149,7 @@ func (i *input) Current(target *bool) func() error {
 			return err
 		}
 		*target = values[0] != 0
+
 		return f.Close()
 	}
 }

@@ -32,6 +32,7 @@ func IoctlRequestNumber(read, write bool, argumentSize, group, number uintptr) u
 	if write {
 		direction |= 0b01
 	}
+
 	return direction<<30 | argumentSize<<16 | group<<8 | number
 }
 
@@ -40,10 +41,12 @@ func (f *file) IoctlGenericArgument(request, argument uintptr) func() error {
 	if f.handle == nil {
 		panic("handle is not open")
 	}
+
 	return func() error {
 		if _, _, errno := unix.Syscall(unix.SYS_IOCTL, f.handle.Fd(), request, argument); errno != 0 {
 			return fmt.Errorf("ioctl %v failed with handle %v: %w", request, f.handle.Name(), errno)
 		}
+
 		return nil
 	}
 }

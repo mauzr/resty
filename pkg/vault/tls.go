@@ -69,11 +69,13 @@ func (c *certificate) refresh() error {
 		return err
 	}
 	*c.destination = crt
+
 	return nil
 }
 
 func (c *Client) certificate(path, role, name string, destination *tls.Certificate, caPool *x509.CertPool) *certificate {
 	r := &certificate{c, path, role, name, destination, caPool}
 	c.certificates = append(c.certificates, r)
+
 	return r
 }

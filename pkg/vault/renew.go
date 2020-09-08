@@ -37,16 +37,19 @@ func (c *Client) AutoRenew(ctx context.Context) <-chan error {
 
 			if err := c.login(c); err != nil {
 				errs <- err
+
 				return
 			}
 			for _, c := range c.certificates {
 				if err := c.refresh(); err != nil {
 					errs <- err
+
 					return
 				}
 			}
 			timer.Reset(time.Until(c.expiry))
 		}
 	}()
+
 	return errs
 }

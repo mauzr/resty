@@ -26,6 +26,10 @@ import (
 	"go.eqrx.net/mauzr/pkg/rest"
 )
 
+const (
+	measureTimeout = 3 * time.Second
+)
+
 // Send a measurement to remote sites.
 func Send(ctx context.Context, c rest.Client, requests chan<- Request, interval time.Duration, destinations ...string) {
 	go func() {
@@ -77,18 +81,20 @@ func Expose(mux rest.Mux, path string, requests chan<- Request) {
 		maxAge, err := time.ParseDuration(args.MaxAge)
 		if err != nil {
 			query.RequestErr = err
+
 			return
 		}
 
 		responses := make(chan Response, 1)
 		request := Request{responses, time.Now().Add(-maxAge)}
 
-		measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, 3*time.Second)
+		measureCtx, measureCtxCancel := context.WithTimeout(query.Ctx, measureTimeout)
 		defer measureCtxCancel()
 
 		select {
 		case <-measureCtx.Done():
 			query.InternalErr = measureCtx.Err()
+
 			return
 		case requests <- request:
 		}

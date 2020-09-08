@@ -68,6 +68,7 @@ func new(chip Chip, offsets Measurement, tags map[string]string, requests <-chan
 			if lastMeasurement != nil && lastMeasurement.Timestamp.After(request.MaxAge) {
 				request.Response <- Response{*lastMeasurement, nil}
 				close(request.Response)
+
 				continue
 			}
 
@@ -75,6 +76,7 @@ func new(chip Chip, offsets Measurement, tags map[string]string, requests <-chan
 				if err := chip.Reset(); err != nil {
 					request.Response <- Response{Measurement{}, err}
 					close(request.Response)
+
 					continue
 				}
 				isReady = true

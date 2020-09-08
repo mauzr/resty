@@ -72,10 +72,12 @@ func (c Calibrations) Compensate(humidityReading uint32, pressureReading uint32,
 	tFine, temperature = c.Temperature.Compensate(temperatureReading)
 	pressure = c.Pressure.Compensate(pressureReading, tFine)
 	humidity = c.Humidity.Compensate(humidityReading, tFine)
+
 	return
 }
 
 // Compensate compensates the temperature reading of the BME280.
+//nolint:gomnd // Hardware interfacing.
 func (c TemperatureCalibration) Compensate(reading uint32) (tFine float64, temperature float64) {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf for explanation of the math.
 
@@ -85,10 +87,12 @@ func (c TemperatureCalibration) Compensate(reading uint32) (tFine float64, tempe
 	temperature = (var1 + var2) / 5120.0
 
 	temperature = math.Max(minimumTemperature, math.Min(temperature, maximumTemperature))
+
 	return
 }
 
 // Compensate compensates the pressure reading of the BME280.
+//nolint:gomnd // Hardware interfacing.
 func (c PressureCalibration) Compensate(reading uint32, tFine float64) (pressure float64) {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf for explanation of the math.
 
@@ -101,10 +105,12 @@ func (c PressureCalibration) Compensate(reading uint32, tFine float64) (pressure
 		pressure += (float64(c.P9)*math.Pow(pressure, 2)/2147483648.0 + pressure*float64(c.P8)/32768.0 + float64(c.P7)) / 16.0
 	}
 	pressure = math.Max(minimumPressure, math.Min(pressure, maximumPressure))
+
 	return
 }
 
 // Compensate compensates the humidity reading of the BME280.
+//nolint:gomnd // Hardware interfacing.
 func (c HumidityCalibration) Compensate(reading uint32, tFine float64) (humidity float64) {
 	// See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME280-DS002.pdf for explanation of the math.
 
@@ -113,5 +119,6 @@ func (c HumidityCalibration) Compensate(reading uint32, tFine float64) (humidity
 	var3 := var2 * (1.0 + (float64(c.H6)/67108864.0)*var1*var2) * (float64(reading) - (float64(c.H4)*64.0 + (float64(c.H5)/16384.0)*var1)) * float64(c.H2) / 65536.0
 	humidity = var3 * (1.0 - float64(c.H1)*var3/524288.0)
 	humidity = math.Max(minimumHumidity, math.Min(humidity, maximumHumidity))
+
 	return
 }

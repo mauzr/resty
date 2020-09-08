@@ -27,6 +27,10 @@ import (
 	"go.eqrx.net/mauzr/pkg/i2c"
 )
 
+const (
+	defaultTemperature = 21
+)
+
 // calibrationInput contains variables that will be read out of the BME680 registers.
 // See https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BME680-DS001.pdf for details.
 type calibrationInput struct {
@@ -70,7 +74,7 @@ type Model struct {
 
 // New creates a new BME280 mode representation.
 func New(bus string, address uint16) *Model {
-	return &Model{i2c.New(bus, address), Calibrations{}, common.Measurement{Temperature: 21}}
+	return &Model{i2c.New(bus, address), Calibrations{}, common.Measurement{Temperature: defaultTemperature}}
 }
 
 // Calibrations return the calibration data from the cip.
@@ -78,15 +82,19 @@ func (m *Model) Calibrations() Calibrations {
 	return m.calibrations
 }
 
+//nolint:gomnd // Hardware interfacing.
 func (m *Model) setupGas() error {
 	target := uint8(3.4 * (((((float64(m.calibrations.Gas.G1)/16.0)+49.0)*(1.0+((((float64(m.calibrations.Gas.G2)/32768.0)*0.0005)+0.00235)*300)) + (float64(m.calibrations.Gas.G3) / 1024.0 * m.last.Temperature)) * (4.0 / (4.0 + float64(m.calibrations.Gas.HeatRange))) * (1.0 / (1.0 + (float64(m.calibrations.Gas.HeatValue) * 0.002)))) - 25))
+
 	return m.device.Write(0x5a, target)()
 }
 
 // Reset resets the BME680 behind the given address and fetches the calibration.
+//nolint:gomnd // Hardware interfacing.
 func (m *Model) Reset() error {
 	var data [42]byte
 	var extraData [5]byte
+
 	return errors.NewBatch(
 		m.device.Open,
 		m.device.Write(0xe0, 0xb6),
@@ -105,6 +113,7 @@ func (m *Model) Reset() error {
 				PressureCalibration{input.P1, input.P2, input.P3, input.P4, input.P5, input.P6, input.P7, input.P8, input.P9, input.P10},
 				TemperatureCalibration{input.T1, input.T2, input.T3},
 			}
+
 			return nil
 		},
 		m.device.Write(0x72, 0b00000101, 0b10110101),
@@ -116,6 +125,7 @@ func (m *Model) Reset() error {
 }
 
 // Measure creates a measurement with the given BME680 behind the given address.
+//nolint:gomnd // Hardware interfacing.
 func (m *Model) Measure() (common.Measurement, error) {
 	var reading [15]byte
 	err := errors.NewBatch(
@@ -128,6 +138,7 @@ func (m *Model) Measure() (common.Measurement, error) {
 			if reading[0]&0x80 == 0x00 {
 				panic("sensor was not ready on readout")
 			}
+
 			return nil
 		},
 	).Always(m.device.Close).Execute("measuring with bme680")
@@ -149,5 +160,6 @@ func (m *Model) Measure() (common.Measurement, error) {
 		Temperature:   temperature,
 		Timestamp:     time.Now(),
 	}
+
 	return measurement, nil
 }

@@ -32,6 +32,7 @@ type SourceSet struct {
 func (s *SourceSet) Add(destination []*color.RGBW) SourceManager {
 	manager, source := NewSourcePair(s.Framerate, destination)
 	s.Sources = append(s.Sources, source)
+
 	return manager
 }
 
@@ -79,6 +80,7 @@ func (s *sourceConfig) AwaitDone(c <-chan time.Time) bool {
 		close(s.tick)
 		s.tickClosed = true
 	}
+
 	return !s.tickClosed
 }
 
@@ -102,5 +104,6 @@ func NewSourcePair(framerate int, destination []*color.RGBW) (SourceManager, Sou
 		panic("destination has no elements")
 	}
 	s := sourceConfig{make(chan interface{}), make(chan interface{}), false, framerate, destination}
+
 	return &s, &s
 }

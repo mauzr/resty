@@ -26,6 +26,7 @@ type HSV struct {
 }
 
 // RGBW converts the color to RGBW (with white set to 0).
+//nolint:gomnd // Conversion logic.
 func (h HSV) RGBW() RGBW {
 	i := math.Floor(h.Hue * 6)
 	f := h.Hue*6 - i

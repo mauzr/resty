@@ -42,7 +42,7 @@ type chip struct {
 }
 
 func (c *chip) Open() error {
-	return c.file.Open(os.O_RDWR, 0660)()
+	return c.file.Open(os.O_RDWR, 0o660)()
 }
 
 func (c *chip) Close() error {

@@ -52,5 +52,6 @@ func (r *Request) Args(target interface{}) error {
 	if err := json.Unmarshal(data, target); err != nil {
 		r.RequestErr = fmt.Errorf("%w: %s", ErrRequest, err)
 	}
+
 	return r.RequestErr
 }

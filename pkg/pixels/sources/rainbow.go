@@ -34,6 +34,7 @@ func rainbowLUT(destinationLength int, duration time.Duration, framerate int) []
 		}
 		step += stepDelta
 	}
+
 	return lut
 }
 

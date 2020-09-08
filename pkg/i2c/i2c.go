@@ -25,6 +25,10 @@ import (
 	"go.eqrx.net/mauzr/pkg/file"
 )
 
+const (
+	ioctl = 0x0707 // I2C IOCTL does not follow usual naming for some reason.
+)
+
 // Device represents a device behind an I2C bus.
 type Device interface {
 	// Open the connection to the device.
@@ -63,7 +67,7 @@ type device struct {
 
 // Open the connection to the device.
 func (d *device) Open() error {
-	return d.file.Open(os.O_RDWR, 0660)()
+	return d.file.Open(os.O_RDWR, 0o660)()
 }
 
 // Close the connection to the device.
@@ -73,24 +77,23 @@ func (d *device) Close() error {
 
 // WriteRead execute an I2C write followed by a read in the same transaction.
 func (d *device) WriteRead(source []byte, destination []byte) func() error {
-	ioctl := uintptr(0x0707) // I2C IOCTL does not follow usual naming for some reason.
 	return func() error {
 		parts := []operation{
 			{addr: d.address, flags: 0, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},           // write
 			{addr: d.address, flags: 1, len: uint16(len(destination)), buf: uintptr(unsafe.Pointer(&destination[0]))}, // read
 		}
-		msg := operations{msgs: uintptr(unsafe.Pointer(&parts[0])), nmsgs: 2}
+		msg := operations{msgs: uintptr(unsafe.Pointer(&parts[0])), nmsgs: uint32(len(parts))}
 
 		if err := d.file.IoctlPointerArgument(ioctl, unsafe.Pointer(&msg))(); err != nil {
 			return fmt.Errorf("failed to write %v and read #%v to I2C address %v because: %w", source, len(destination), d.address, err)
 		}
+
 		return nil
 	}
 }
 
 // Write to an I2C device.
 func (d *device) Write(source ...byte) func() error {
-	ioctl := uintptr(0x0707) // I2C IOCTL does not follow usual naming for some reason.
 	return func() error {
 		parts := []operation{
 			{addr: d.address, flags: 0, len: uint16(len(source)), buf: uintptr(unsafe.Pointer(&source[0]))},
@@ -100,6 +103,7 @@ func (d *device) Write(source ...byte) func() error {
 		if err := d.file.IoctlPointerArgument(ioctl, unsafe.Pointer(&msg))(); err != nil {
 			return fmt.Errorf("failed to write %v to I2C address %v: %w", source, d.address, err)
 		}
+
 		return nil
 	}
 }

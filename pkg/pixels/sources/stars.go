@@ -22,17 +22,25 @@ import (
 	"go.eqrx.net/mauzr/pkg/pixels/color"
 )
 
+const (
+	dampeningFactor = 0.1
+)
+
 // Stars emulates that each managed pixel is an independent light source that flickers.
+//nolint:gosec // This does not need crypto rand.
+//nolint:gomnd // Number juggling.
 func Stars(theme color.RGBW) func(LoopSetting) {
 	if theme == nil {
 		panic("theme not set")
 	}
-	lower := color.Off().MixWith(0.1, theme)
+	lower := color.Off().MixWith(dampeningFactor, theme)
 	upper := theme
+
 	return func(l LoopSetting) {
 		for i := range l.Start {
 			l.Start[i] = upper
 		}
+		//nolint:gomnd // Number juggling.
 		go func() {
 			defer close(l.Done)
 			if len(l.Destination) == 0 {

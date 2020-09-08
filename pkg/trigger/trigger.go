@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	form = `
+	triggerDuration = 6 * time.Second
+	form            = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -48,10 +49,11 @@ func Expose(mux rest.Mux, path string, output gpio.Output) error {
 	if err := errors.NewBatch(output.Open).Always(output.Close).Execute("testing trigger"); err != nil {
 		return err
 	}
-	batch := errors.NewBatch(output.Open, output.Set(true), errors.BatchSleepAction(6*time.Second), output.Set(false)).Always(output.Close)
+	batch := errors.NewBatch(output.Open, output.Set(true), errors.BatchSleepAction(triggerDuration), output.Set(false)).Always(output.Close)
 	mux.Endpoint(path, func(query *rest.Request) {
 		if !query.HasArgs {
 			query.ResponseBody = []byte(form)
+
 			return
 		}
 		args := struct {
@@ -62,5 +64,6 @@ func Expose(mux rest.Mux, path string, output gpio.Output) error {
 			query.InternalErr = batch.Execute("executing trigger")
 		}
 	})
+
 	return nil
 }

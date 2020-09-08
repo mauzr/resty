@@ -27,6 +27,10 @@ import (
 	"sync"
 )
 
+const (
+	maxInflightMessages = 100
+)
+
 // Logger instance to dump logs into.
 type Logger interface {
 	Error(message string, args ...interface{})
@@ -76,6 +80,7 @@ func (l *systemdLogger) RetainedMessages() []string {
 	lines := l.messages
 	l.messages = []string{}
 	l.mutex.Unlock()
+
 	return lines
 }
 
@@ -92,8 +97,8 @@ func (l *systemdLogger) send(priority int, message string, args []interface{}) {
 	if priority <= l.retainLevel {
 		l.mutex.Lock()
 		l.messages = append(l.messages, m)
-		if len(l.messages) >= 100 {
-			l.messages = l.messages[:100]
+		if len(l.messages) >= maxInflightMessages {
+			l.messages = l.messages[:maxInflightMessages]
 		}
 		l.mutex.Unlock()
 	}
@@ -105,22 +110,30 @@ func (l *systemdLogger) send(priority int, message string, args []interface{}) {
 	}
 }
 
+const (
+	levelError         = 3
+	levelWarning       = 4
+	levelNotice        = 5
+	levelInformational = 6
+	levelDebug         = 7
+)
+
 func (l *systemdLogger) Error(message string, args ...interface{}) {
-	l.send(3, message, args)
+	l.send(levelError, message, args)
 }
 
 func (l *systemdLogger) Warning(message string, args ...interface{}) {
-	l.send(4, message, args)
+	l.send(levelWarning, message, args)
 }
 
 func (l *systemdLogger) Notice(message string, args ...interface{}) {
-	l.send(5, message, args)
+	l.send(levelNotice, message, args)
 }
 
 func (l *systemdLogger) Informational(message string, args ...interface{}) {
-	l.send(6, message, args)
+	l.send(levelInformational, message, args)
 }
 
 func (l *systemdLogger) Debug(message string, args ...interface{}) {
-	l.send(7, message, args)
+	l.send(levelDebug, message, args)
 }

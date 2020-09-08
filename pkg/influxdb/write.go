@@ -57,6 +57,7 @@ func (m Measurement) Line() string {
 	for key, value := range m.Fields {
 		fields = append(fields, fmt.Sprintf("%s=%v", key, value))
 	}
+
 	return fmt.Sprintf("%s,%s %s %v", m.Name, strings.Join(tags, ","), strings.Join(fields, ","), timestamp.UnixNano())
 }
 
@@ -77,5 +78,6 @@ func (c Client) Write(ctx context.Context, bucket string, measurements ...Measur
 		lines = append(lines, m.Line())
 	}
 	body := strings.Join(lines, "\n")
+
 	return c.c.Request(ctx, url, http.MethodPost).Header("Authorization", fmt.Sprintf("Token %s", c.token)).StringBody(body).Send(http.StatusNoContent).Check()
 }

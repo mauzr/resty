@@ -23,12 +23,16 @@ import (
 	"go.eqrx.net/mauzr/pkg/bme"
 )
 
+const (
+	runDuration = 30 * time.Second
+)
+
 func main() {
 	dut := make(chan bme.Request)
 	com := make(chan bme.Request)
 	bme.NewBME680("/dev/i2c-1", 0x76, bme.Measurement{}, map[string]string{}, dut)
 	bme.NewBME680("/dev/i2c-1", 0x77, bme.Measurement{}, map[string]string{}, com)
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(runDuration)
 	for {
 		dutResponses := make(chan bme.Response, 1)
 		comResponses := make(chan bme.Response, 1)

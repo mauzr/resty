@@ -50,6 +50,7 @@ func (m *memoryMap) Close() func() error {
 		if err := m.file.Unmap(&m.mmap)(); err != nil {
 			return fmt.Errorf("could not unmap memory: %w", err)
 		}
+
 		return nil
 	}
 }
@@ -57,7 +58,7 @@ func (m *memoryMap) Close() func() error {
 // Open maps the file to memory.
 func (m *memoryMap) Open(offset int64, length int) func() error {
 	return func() error {
-		return errors.NewBatch(m.file.Open(os.O_RDWR|os.O_SYNC, 0600), m.file.Map(offset, length, unix.PROT_WRITE|unix.PROT_READ, unix.MAP_SHARED, &m.mmap)).Always(m.file.Close).Execute("opening memory map")
+		return errors.NewBatch(m.file.Open(os.O_RDWR|os.O_SYNC, 0o600), m.file.Map(offset, length, unix.PROT_WRITE|unix.PROT_READ, unix.MAP_SHARED, &m.mmap)).Always(m.file.Close).Execute("opening memory map")
 	}
 }
 
@@ -68,6 +69,7 @@ func (m *memoryMap) Uint32Register(destination *[]uint32) func() error {
 		header.Len /= 4
 		header.Cap /= 4
 		*destination = *(*[]uint32)(unsafe.Pointer(&header))
+
 		return nil
 	}
 }
@@ -79,6 +81,7 @@ func (f *file) Unmap(memoryMap *[]byte) func() error {
 		if err := unix.Munmap(*memoryMap); err != nil {
 			return fmt.Errorf("could not unmap memory: %w", err)
 		}
+
 		return nil
 	}
 }
@@ -91,6 +94,7 @@ func (f *file) Map(offset int64, length, prot, flags int, memoryMap *[]byte) fun
 		} else {
 			return fmt.Errorf("could not map memory: %w", err)
 		}
+
 		return nil
 	}
 }

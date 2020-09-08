@@ -47,16 +47,19 @@ func (o *output) Close() error {
 	if err == nil {
 		o.file = nil
 	}
+
 	return err
 }
 
 func (o *output) Set(value bool) func() error {
 	ioctl := file.IoctlRequestNumber(true, true, unsafe.Sizeof([64]uint8{}), 0xb4, 9)
+
 	return func() error {
 		payload := [64]uint8{}
 		if value {
 			payload[0] = 1
 		}
+
 		return o.file.IoctlPointerArgument(ioctl, unsafe.Pointer(&payload[0]))()
 	}
 }
@@ -95,7 +98,9 @@ func (c *chip) NewOutput(number uint32, active bool, value bool) Output {
 			return err
 		}
 		o.file = file.NewFromFd(r.fd, fmt.Sprintf("gpio-%v", number))
+
 		return nil
 	}
+
 	return &o
 }

@@ -24,7 +24,6 @@ import (
 
 	"go.eqrx.net/mauzr/pkg/errors"
 	"go.eqrx.net/mauzr/pkg/file"
-
 	"golang.org/x/sys/unix"
 )
 
@@ -65,8 +64,9 @@ func (p *normalPort) Open() error {
 	settings.Cflag |= unix.CS8 | p.baud
 	settings.Cc[unix.VMIN] = 1
 	settings.Cc[unix.VTIME] = 0
+
 	return errors.NewBatch(
-		p.file.Open(unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|os.O_RDWR, 0666),
+		p.file.Open(unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|os.O_RDWR, 0o666),
 		p.file.IoctlPointerArgument(unix.TCSETS, unsafe.Pointer(&settings)),
 	).Execute("open uart")
 }
@@ -93,6 +93,7 @@ func (p *normalPort) RTS(value bool) func() error {
 	if value {
 		return p.file.IoctlPointerArgument(unix.TIOCMBIS, unsafe.Pointer(&mask))
 	}
+
 	return p.file.IoctlPointerArgument(unix.TIOCMBIC, unsafe.Pointer(&mask))
 }
 
@@ -102,6 +103,7 @@ func (p *normalPort) DTR(value bool) func() error {
 	if value {
 		return p.file.IoctlPointerArgument(unix.TIOCMBIS, unsafe.Pointer(&mask))
 	}
+
 	return p.file.IoctlPointerArgument(unix.TIOCMBIC, unsafe.Pointer(&mask))
 }
 

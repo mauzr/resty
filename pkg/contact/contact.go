@@ -69,5 +69,6 @@ func ExposeSend(ctx context.Context, c rest.Client, mux rest.Mux, input gpio.Inp
 			rest.GoSendAll(http.StatusSeeOther, log.Root.Warning, r...)
 		}
 	}()
+
 	return nil
 }

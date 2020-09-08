@@ -37,5 +37,6 @@ func (c *Client) CreateSubToken(policy string) (string, error) {
 		} `json:"auth"`
 	}{}
 	err := c.http.Request(context.Background(), c.host+"auth/token/create", http.MethodPost).JSONBody(&request).Header("X-Vault-Token", c.token).Send(http.StatusOK).JSONBody(&response).Check()
+
 	return response.Auth.Token, err
 }
