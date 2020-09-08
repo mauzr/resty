@@ -110,30 +110,31 @@ func (l *systemdLogger) send(priority int, message string, args []interface{}) {
 	}
 }
 
+// Syslogs levels.
 const (
-	levelError         = 3
-	levelWarning       = 4
-	levelNotice        = 5
-	levelInformational = 6
-	levelDebug         = 7
+	ErrorLevel         = 3
+	WarningLevel       = 4
+	NoticeLevel        = 5
+	InformationalLevel = 6
+	DebugLevel         = 7
 )
 
 func (l *systemdLogger) Error(message string, args ...interface{}) {
-	l.send(levelError, message, args)
+	l.send(ErrorLevel, message, args)
 }
 
 func (l *systemdLogger) Warning(message string, args ...interface{}) {
-	l.send(levelWarning, message, args)
+	l.send(WarningLevel, message, args)
 }
 
 func (l *systemdLogger) Notice(message string, args ...interface{}) {
-	l.send(levelNotice, message, args)
+	l.send(NoticeLevel, message, args)
 }
 
 func (l *systemdLogger) Informational(message string, args ...interface{}) {
-	l.send(levelInformational, message, args)
+	l.send(InformationalLevel, message, args)
 }
 
 func (l *systemdLogger) Debug(message string, args ...interface{}) {
-	l.send(levelDebug, message, args)
+	l.send(DebugLevel, message, args)
 }
